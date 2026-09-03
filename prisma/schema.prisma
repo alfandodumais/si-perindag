@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  name      String
+  email     String?
+  password  String
+  role      String   @default("ADMIN") // ADMIN, VERIFICATOR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MerchantRegistration {
+  id             String    @id @default(uuid())
+  registrationNo String    @unique
+  nik            String
+  ownerName      String
+  phone          String
+  email          String?
+  businessName   String
+  category       String    // Kuliner, Retail/Kelontong, Fashion, Jasa, Agribisnis, Kerajinan, dll
+  scale          String    // Mikro, Kecil, Menengah
+  monthlyRevenue Float?
+  employeeCount  Int?      @default(1)
+  address        String
+  district       String    // Kecamatan
+  village        String?   // Kelurahan / Desa
+  postalCode     String?
+  latitude       Float
+  longitude      Float
+  ktpImage       String?   // Base64 Data URL or file link
+  businessImage  String?   // Base64 Data URL or file link
+  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNotes     String?
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
