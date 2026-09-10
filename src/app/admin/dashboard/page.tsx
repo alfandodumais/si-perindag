@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import AdminNavbar from '@/components/AdminNavbar';
+import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import { 
   Users, 
   Clock, 
@@ -70,10 +70,8 @@ export default async function AdminDashboardPage() {
   const recentPending = allMerchants.filter((m) => m.status === 'PENDING').slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      <AdminNavbar user={session} />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <AdminSidebarLayout user={session}>
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Personalized Welcome Banner */}
         <div className={`p-6 sm:p-8 rounded-3xl border shadow-sm transition-all ${
@@ -410,6 +408,6 @@ export default async function AdminDashboardPage() {
         </div>
 
       </main>
-    </div>
+    </AdminSidebarLayout>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminNavbar from '@/components/AdminNavbar';
+import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import { 
   Users, 
   UserPlus, 
@@ -225,10 +225,8 @@ function UsersContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      <AdminNavbar user={currentUser} />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <AdminSidebarLayout user={currentUser}>
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* Toast Alert */}
         {toastMessage && (
@@ -808,7 +806,7 @@ function UsersContent() {
         )}
 
       </main>
-    </div>
+    </AdminSidebarLayout>
   );
 }
 
