@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { saveBase64AsPhysicalFile } from '@/lib/upload';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,6 +134,10 @@ export async function POST(req: NextRequest) {
 
     const registrationNo = await generateRegistrationNo();
 
+    // Ensure images are physically saved as files on disk (NOT heavy base64 strings in database)
+    const physicalKtpImage = await saveBase64AsPhysicalFile(ktpImage, 'ktp');
+    const physicalBusinessImage = await saveBase64AsPhysicalFile(businessImage, 'usaha');
+
     const newRegistration = await prisma.merchantRegistration.create({
       data: {
         registrationNo,
@@ -151,8 +156,8 @@ export async function POST(req: NextRequest) {
         postalCode: postalCode ? String(postalCode).trim() : null,
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
-        ktpImage: ktpImage || null,
-        businessImage: businessImage || null,
+        ktpImage: physicalKtpImage || null,
+        businessImage: physicalBusinessImage || null,
         status: 'PENDING',
       },
     });

@@ -19,7 +19,8 @@ import {
   AlertCircle, 
   ArrowRight,
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  Loader2
 } from 'lucide-react';
 import { KECAMATAN_MANADO, MANADO_CENTER, KATEGORI_USAHA } from '@/lib/constants';
 
@@ -57,6 +58,7 @@ export default function DaftarPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successResult, setSuccessResult] = useState<any>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const categories = KATEGORI_USAHA;
   const districts = KECAMATAN_MANADO;
@@ -74,24 +76,48 @@ export default function DaftarPage() {
     }));
   };
 
-  // Convert uploaded image file to Base64 data URL for easy storage
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'ktpImage' | 'businessImage') => {
+  // Upload image physically to server disk (saves clean relative URL /uploads/xxx.jpg)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'ktpImage' | 'businessImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert('Ukuran file maksimal adalah 3 MB');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal adalah 5 MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      alert('Format file harus berupa gambar (JPG, PNG, atau WEBP)');
+      return;
+    }
+
+    setUploadingField(field);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', field === 'ktpImage' ? 'ktp' : 'usaha');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal mengunggah foto ke server fisik');
+      }
+
       setFormData((prev) => ({
         ...prev,
-        [field]: reader.result as string,
+        [field]: data.url, // Clean physical path e.g. /uploads/ktp-1725...jpg
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Error uploading file:', err);
+      alert(err.message || 'Terjadi kesalahan saat menyimpan berkas foto fisik.');
+    } finally {
+      setUploadingField(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -536,7 +562,12 @@ export default function DaftarPage() {
                   Foto e-KTP Pemilik Usaha
                 </label>
                 <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50 relative">
-                  {formData.ktpImage ? (
+                  {uploadingField === 'ktpImage' ? (
+                    <div className="py-10 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      <span className="font-semibold text-slate-700">Menyimpan foto fisik ke server...</span>
+                    </div>
+                  ) : formData.ktpImage ? (
                     <div className="relative">
                       <img
                         src={formData.ktpImage}
@@ -546,7 +577,7 @@ export default function DaftarPage() {
                       <button
                         type="button"
                         onClick={() => setFormData((prev) => ({ ...prev, ktpImage: '' }))}
-                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow"
+                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow hover:bg-rose-700 transition-colors"
                       >
                         Ganti Foto
                       </button>
@@ -557,10 +588,10 @@ export default function DaftarPage() {
                       <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
                         Klik untuk upload foto KTP
                       </span>
-                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG (Maks 3 MB)</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG, WEBP (Maks 5 MB)</p>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
                         onChange={(e) => handleImageUpload(e, 'ktpImage')}
                         className="hidden"
                       />
@@ -575,7 +606,12 @@ export default function DaftarPage() {
                   Foto Toko / Gerai / Produk Usaha
                 </label>
                 <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50 relative">
-                  {formData.businessImage ? (
+                  {uploadingField === 'businessImage' ? (
+                    <div className="py-10 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      <span className="font-semibold text-slate-700">Menyimpan foto fisik ke server...</span>
+                    </div>
+                  ) : formData.businessImage ? (
                     <div className="relative">
                       <img
                         src={formData.businessImage}
@@ -585,7 +621,7 @@ export default function DaftarPage() {
                       <button
                         type="button"
                         onClick={() => setFormData((prev) => ({ ...prev, businessImage: '' }))}
-                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow"
+                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow hover:bg-rose-700 transition-colors"
                       >
                         Ganti Foto
                       </button>
@@ -596,10 +632,10 @@ export default function DaftarPage() {
                       <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
                         Klik untuk upload foto gerai / usaha
                       </span>
-                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG (Maks 3 MB)</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG, WEBP (Maks 5 MB)</p>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
                         onChange={(e) => handleImageUpload(e, 'businessImage')}
                         className="hidden"
                       />
