@@ -24,7 +24,9 @@ import {
   AlertCircle,
   X,
   Printer,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  Crown
 } from 'lucide-react';
 import { formatDateIndo, formatDateTimeIndo, formatRupiah } from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -136,6 +138,34 @@ function VerifikasiContent() {
       alert(err.message || 'Terjadi kesalahan sistem');
     } finally {
       setSubmittingAction(false);
+    }
+  };
+
+  // Delete Merchant (Superadmin only)
+  const handleDeleteMerchant = async (merchantId: string, name: string) => {
+    if (userSession?.role !== 'SUPERADMIN') {
+      alert('Hanya Superadmin yang memiliki izin untuk menghapus data pendaftaran.');
+      return;
+    }
+
+    if (!confirm(`Konfirmasi Tindakan Superadmin:\nApakah Anda yakin ingin menghapus data permohonan "${name}" secara permanen?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/merchants/${merchantId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menghapus permohonan');
+      }
+
+      alert(data.message);
+      setSelectedMerchant(null);
+      fetchMerchants();
+    } catch (err: any) {
+      alert(err.message || 'Terjadi kesalahan sistem saat menghapus data');
     }
   };
 
@@ -370,16 +400,28 @@ function VerifikasiContent() {
 
                       {/* Actions */}
                       <td className="py-4 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedMerchant(m);
-                            setActionNotes(m.adminNotes || '');
-                          }}
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ml-auto"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Review & Verifikasi</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedMerchant(m);
+                              setActionNotes(m.adminNotes || '');
+                            }}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Review</span>
+                          </button>
+
+                          {userSession?.role === 'SUPERADMIN' && (
+                            <button
+                              onClick={() => handleDeleteMerchant(m.id, m.businessName)}
+                              title="Hapus Data (Superadmin)"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                     </tr>
@@ -593,24 +635,36 @@ function VerifikasiContent() {
                     />
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      disabled={submittingAction}
-                      onClick={() => handleVerifyAction('REJECTED')}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <XCircle className="w-4 h-4" /> Tolak Permohonan (Minta Revisi)
-                    </button>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    {userSession?.role === 'SUPERADMIN' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMerchant(selectedMerchant.id, selectedMerchant.businessName)}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600" /> Hapus Pendaftaran (Superadmin)
+                      </button>
+                    ) : <div />}
 
-                    <button
-                      type="button"
-                      disabled={submittingAction}
-                      onClick={() => handleVerifyAction('APPROVED')}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" /> Setujui Permohonan (Terbitkan Tanda Terdaftar)
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        disabled={submittingAction}
+                        onClick={() => handleVerifyAction('REJECTED')}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" /> Tolak (Minta Revisi)
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={submittingAction}
+                        onClick={() => handleVerifyAction('APPROVED')}
+                        className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Setujui Permohonan (Terbitkan STBP)
+                      </button>
+                    </div>
                   </div>
                 </div>
 

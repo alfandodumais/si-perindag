@@ -6,24 +6,65 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding initial data for Dinas Perdagangan Kota Manado...');
 
-  // 1. Create / Update Admin Account
-  const hashedPassword = await bcrypt.hash('admin123', 10);
+  // 1. Create / Update Superadmin Account
+  const superadminPassword = await bcrypt.hash('superadmin123', 10);
+  const superadmin = await prisma.user.upsert({
+    where: { username: 'superadmin' },
+    update: {
+      password: superadminPassword,
+      name: 'Super Administrator Disperindag',
+      email: 'superadmin@manadokota.go.id',
+      role: 'SUPERADMIN',
+    },
+    create: {
+      username: 'superadmin',
+      name: 'Super Administrator Disperindag',
+      email: 'superadmin@manadokota.go.id',
+      password: superadminPassword,
+      role: 'SUPERADMIN',
+    },
+  });
+  console.log('Superadmin user ready:', superadmin.username, `(${superadmin.role})`);
+
+  // 1b. Update existing 'admin' account to SUPERADMIN as well
+  const adminPassword = await bcrypt.hash('admin123', 10);
   const admin = await prisma.user.upsert({
     where: { username: 'admin' },
     update: {
-      password: hashedPassword,
+      password: adminPassword,
       name: 'Administrator Disperindag Kota Manado',
       email: 'admin@manadokota.go.id',
+      role: 'SUPERADMIN',
     },
     create: {
       username: 'admin',
       name: 'Administrator Disperindag Kota Manado',
       email: 'admin@manadokota.go.id',
-      password: hashedPassword,
+      password: adminPassword,
+      role: 'SUPERADMIN',
+    },
+  });
+  console.log('Admin user upgraded:', admin.username, `(${admin.role})`);
+
+  // 1c. Create dedicated Verifikator (ADMIN role - restricted)
+  const verifikatorPassword = await bcrypt.hash('admin123', 10);
+  const verifikator = await prisma.user.upsert({
+    where: { username: 'verifikator' },
+    update: {
+      password: verifikatorPassword,
+      name: 'Petugas Verifikasi Disperindag',
+      email: 'verifikator@manadokota.go.id',
+      role: 'ADMIN',
+    },
+    create: {
+      username: 'verifikator',
+      name: 'Petugas Verifikasi Disperindag',
+      email: 'verifikator@manadokota.go.id',
+      password: verifikatorPassword,
       role: 'ADMIN',
     },
   });
-  console.log('Admin user ready:', admin.username);
+  console.log('Verifikator user ready:', verifikator.username, `(${verifikator.role})`);
 
   // 2. Clear existing merchants to replace with authentic Manado sample data
   await prisma.merchantRegistration.deleteMany({});
