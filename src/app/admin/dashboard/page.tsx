@@ -17,18 +17,28 @@ import {
   Crown,
   UserCheck,
   ShieldCheck,
-  UserPlus,
-  Settings,
-  ChevronRight
+  PlusCircle,
+  Database,
+  GraduationCap,
+  Award,
+  Sparkles,
+  Calendar,
+  Layers,
+  Search,
+  ExternalLink,
+  BarChart3,
+  PieChart,
+  CheckCircle
 } from 'lucide-react';
-import { formatDateIndo, formatDateTimeIndo, formatRupiah } from '@/lib/utils';
+import { KABUPATEN_KOTA_SULUT, KATEGORI_IKM_SULUT, IKM_SCORE_TIERS, DISPERINDAG_SULUT } from '@/lib/constants';
+import { getAppSettings } from '@/lib/settings';
 import dynamic from 'next/dynamic';
 
 const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-80 bg-slate-200 rounded-2xl flex items-center justify-center text-slate-500">
-      Memuat GIS Peta Sebaran Wilayah...
+    <div className="w-full h-80 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xs">
+      Memuat GIS Peta Sebaran 15 Kab/Kota Sulawesi Utara...
     </div>
   ),
 });
@@ -43,368 +53,585 @@ export default async function AdminDashboardPage() {
 
   const isSuperadmin = session.role === 'SUPERADMIN';
 
-  // Fetch KPI data & users count
-  const [total, pending, approved, rejected, allMerchants, categoryStats, districtStats, totalUsers, totalVerifikator] = await Promise.all([
+  // Fetch live DB records directly from PostgreSQL
+  const [
+    totalDb,
+    integratedNibCount,
+    naikKelasCount,
+    allMerchants,
+    categoryStatsDb,
+    regencyStatsDb,
+    mentoringStagesDb,
+    ikmScoreStatsDb,
+    appSettings,
+  ] = await Promise.all([
+    // Total registered IKM
     prisma.merchantRegistration.count(),
-    prisma.merchantRegistration.count({ where: { status: 'PENDING' } }),
-    prisma.merchantRegistration.count({ where: { status: 'APPROVED' } }),
-    prisma.merchantRegistration.count({ where: { status: 'REJECTED' } }),
+    // IKM with valid NIB
+    prisma.merchantRegistration.count({
+      where: {
+        nib: { not: null, notIn: ['', '-'] },
+      },
+    }),
+    // IKM with 'Maju' or 'Unggulan' tier
+    prisma.merchantRegistration.count({
+      where: {
+        OR: [
+          { ikmScore: { in: ['Maju', 'Unggulan', 'Level Unggulan'] } },
+          { ikmScore: { contains: 'Maju', mode: 'insensitive' } },
+          { ikmScore: { contains: 'Unggulan', mode: 'insensitive' } },
+        ],
+      },
+    }),
+    // Merchants for GIS Map (with valid coordinates)
     prisma.merchantRegistration.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 200,
     }),
+    // Group by category
     prisma.merchantRegistration.groupBy({
       by: ['category'],
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
     }),
+    // Group by regency
     prisma.merchantRegistration.groupBy({
-      by: ['district'],
+      by: ['regency'],
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
     }),
-    prisma.user.count(),
-    prisma.user.count({ where: { role: 'ADMIN' } }),
+    // Group by mentoring status
+    prisma.merchantRegistration.groupBy({
+      by: ['mentoringStatus'],
+      _count: { id: true },
+    }),
+    // Group by ikmScore tier
+    prisma.merchantRegistration.groupBy({
+      by: ['ikmScore'],
+      _count: { id: true },
+    }),
+    // App settings (Banners & Categories)
+    getAppSettings(),
   ]);
 
-  const recentPending = allMerchants.filter((m) => m.status === 'PENDING').slice(0, 6);
+  // Transform merchants into MapPins
+  const mapPins = allMerchants.map((m) => ({
+    id: m.id,
+    registrationNo: m.registrationNo,
+    businessName: m.businessName,
+    ownerName: m.ownerName,
+    category: m.category,
+    scale: m.scale,
+    address: m.address,
+    district: m.district || m.regency || 'Sulawesi Utara',
+    status: m.status,
+    latitude: m.latitude || 1.4822,
+    longitude: m.longitude || 124.8428,
+  }));
+
+  // Regency Map calculated from real DB records
+  const regencyMap = new Map<string, number>();
+  regencyStatsDb.forEach((r) => {
+    if (r.regency) regencyMap.set(r.regency, r._count.id);
+  });
+
+  const regencyBreakdown = KABUPATEN_KOTA_SULUT.map((region) => {
+    const count = regencyMap.get(region) || 0;
+    const percent = totalDb > 0 ? ((count / totalDb) * 100).toFixed(1) : '0';
+    return {
+      name: region,
+      count,
+      percent: parseFloat(percent),
+    };
+  }).sort((a, b) => b.count - a.count);
+
+  const maxRegencyCount = Math.max(...regencyBreakdown.map((r) => r.count), 1);
+
+  // Category Distribution from real DB records
+  const CATEGORY_COLORS = [
+    'bg-sky-500',
+    'bg-blue-600',
+    'bg-amber-500',
+    'bg-emerald-500',
+    'bg-teal-500',
+    'bg-purple-500',
+    'bg-indigo-500',
+    'bg-rose-500',
+  ];
+
+  const categoryDistribution = categoryStatsDb.map((c, idx) => {
+    const count = c._count.id;
+    const percent = totalDb > 0 ? Math.round((count / totalDb) * 100) : 0;
+    return {
+      label: c.category || 'Lainnya',
+      count,
+      percent,
+      color: CATEGORY_COLORS[idx % CATEGORY_COLORS.length],
+    };
+  });
+
+  const largestCategory = categoryDistribution[0]?.label || 'Makanan & Minuman';
+  const largestCategoryPercent = categoryDistribution[0]?.percent || 0;
+
+  // Mentoring Stage Counts from real DB
+  const stageMap = new Map<string, number>();
+  mentoringStagesDb.forEach((s) => {
+    if (s.mentoringStatus) stageMap.set(s.mentoringStatus, s._count.id);
+  });
+
+  const kurasiCount = (stageMap.get('Analisis Kebutuhan') || 0) + (stageMap.get('Pendataan') || 0);
+  const pelatihanCount = stageMap.get('Pendampingan') || 0;
+  const sertifikasiCount = stageMap.get('Sertifikasi') || 0;
+  const pasarCount = stageMap.get('Akses Pasar') || 0;
+  const totalMentoring = kurasiCount + pelatihanCount + sertifikasiCount + pasarCount;
+
+  // Tier counts from real DB
+  const tierMap = new Map<string, number>();
+  ikmScoreStatsDb.forEach((t) => {
+    if (t.ikmScore) tierMap.set(t.ikmScore, t._count.id);
+  });
+
+  const completenessPercent = totalDb > 0 ? Math.round((integratedNibCount / totalDb) * 100) : 0;
+  const incompleteCount = Math.max(0, totalDb - integratedNibCount);
+  const incompletePercent = 100 - completenessPercent;
+
+  const agendaPembinaan = [
+    {
+      title: 'Pelatihan Keamanan Pangan & Sertifikasi Halal',
+      date: '18 - 20 Sept 2026',
+      location: 'Sentra IKM Kota Bitung',
+      participants: '35 IKM Mamin',
+      status: 'Akan Datang',
+      statusColor: 'bg-sky-100 text-sky-800 border-sky-200',
+    },
+    {
+      title: 'Kurasi Produk Unggulan Ekspor Sulut',
+      date: '25 Sept 2026',
+      location: 'Disperindag Prov. Sulut (Manado)',
+      participants: '20 IKM Maju/Unggulan',
+      status: 'Pendaftaran',
+      statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    },
+    {
+      title: 'Workshop Digital Marketing & E-Katalog Nasional',
+      date: '02 Okt 2026',
+      location: 'Aula Pemkot Tomohon',
+      participants: '50 IKM Kreatif',
+      status: 'Segera',
+      statusColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    },
+    {
+      title: 'Fasilitasi Uji Lab & Pengujian BPOM/PIRT',
+      date: '10 Okt 2026',
+      location: 'Balai Standardisasi Manado',
+      participants: '25 IKM Olahan Kelapa',
+      status: 'Persiapan',
+      statusColor: 'bg-purple-100 text-purple-800 border-purple-200',
+    },
+  ];
 
   return (
     <AdminSidebarLayout user={session}>
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="w-full px-3 sm:px-5 lg:px-6 py-6 space-y-6 sm:space-y-7">
         
-        {/* Personalized Welcome Banner */}
-        <div className={`p-6 sm:p-8 rounded-3xl border shadow-sm transition-all ${
-          isSuperadmin 
-            ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border-slate-700/60' 
-            : 'bg-white text-slate-900 border-slate-200'
-        }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                {isSuperadmin ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
-                    <Crown className="w-3.5 h-3.5 text-amber-400" />
-                    Pusat Kontrol Super Administrator
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Ruang Kerja Petugas Verifikator
-                  </span>
-                )}
-                <span className="text-xs text-slate-400 hidden sm:inline">• Dinas Perdagangan Kota Manado</span>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Selamat Datang, {session.name}
-              </h1>
-
-              <p className={`text-xs sm:text-sm max-w-2xl leading-relaxed ${isSuperadmin ? 'text-slate-300' : 'text-slate-500'}`}>
-                {isSuperadmin 
-                  ? 'Anda memiliki hak akses penuh untuk mengelola pengguna (petugas), mengontrol data permohonan UMKM, menghapus duplikasi, dan mengawasi jalannya verifikasi.' 
-                  : 'Fokus pada validasi dan verifikasi berkas permohonan pendaftaran pelaku UMKM Kota Manado agar cepat diterbitkan tanda terdaftar resmi.'}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {isSuperadmin && (
-                <Link
-                  href="/admin/users"
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 text-xs sm:text-sm font-bold rounded-xl shadow transition-all flex items-center gap-2 hover:scale-[1.02]"
-                >
-                  <Users className="w-4 h-4 text-amber-400" /> Kelola Petugas
-                </Link>
-              )}
-
-              <Link
-                href="/admin/verifikasi"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 hover:scale-[1.02]"
-              >
-                <FileCheck2 className="w-4 h-4" /> Buka Ruang Verifikasi
-              </Link>
-            </div>
-          </div>
+        {/* HERO PANORAMIC BANNER (High-Res 2534x416 from banner.png) */}
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs bg-white">
+          <img
+            src={appSettings.bannerDashboard || '/banner.png'}
+            alt="SIPIKEM SULUT - Dari Potensi Lokal Menuju Pasar Global - Dinas Perindustrian dan Perdagangan Provinsi Sulawesi Utara"
+            className="w-full h-auto object-cover block select-none"
+          />
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* 4 TOP KPI CARDS (Matching dashboard.jpeg) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           
-          {/* Card 1: Total UMKM */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          {/* Card 1: Total IKM */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs hover:border-sky-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Total Pendaftar
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Total IKM Terdata
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
                 <Store className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-slate-900">{total}</div>
-            <p className="text-[11px] text-slate-500">Pelaku UMKM terdata di sistem</p>
-          </div>
-
-          {/* Card 2: Pending Verifikasi */}
-          <div className="bg-white p-6 rounded-3xl border border-amber-200 shadow-sm space-y-3 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-2 h-full bg-amber-500" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                Menunggu Verifikasi
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-slate-900">{totalDb.toLocaleString('id-ID')}</span>
+              <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                Riil Terdata
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-              </div>
             </div>
-            <div className="text-3xl font-black text-amber-800">{pending}</div>
-            <Link
-              href="/admin/verifikasi?status=PENDING"
-              className="text-[11px] font-bold text-amber-700 hover:text-amber-900 inline-flex items-center gap-1"
-            >
-              Perlu ditindaklanjuti <ArrowRight className="w-3 h-3" />
-            </Link>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Pelaku IKM aktif di 15 Kabupaten/Kota
+            </p>
           </div>
 
-          {/* Card 3: Telah Disetujui */}
-          <div className="bg-white p-6 rounded-3xl border border-emerald-200 shadow-sm space-y-3 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500" />
+          {/* Card 2: IKM Terintegrasi */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs hover:border-blue-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                Telah Disetujui
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                IKM Terintegrasi NIB
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <FileCheck2 className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-3xl font-black text-emerald-800">{approved}</div>
-            <p className="text-[11px] text-emerald-600 font-medium">Surat Terdaftar Sah Terbit</p>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-blue-900">{integratedNibCount.toLocaleString('id-ID')}</span>
+              <span className="text-[11px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded">
+                {completenessPercent}% Lengkap
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Data profil, legalitas & foto terverifikasi
+            </p>
           </div>
 
-          {/* Card 4: Ditolak atau Petugas (if Superadmin) */}
-          {isSuperadmin ? (
-            <div className="bg-white p-6 rounded-3xl border border-indigo-200 shadow-sm space-y-3 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-2 h-full bg-indigo-500" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
-                  Pengguna Sistem
-                </span>
-                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-800 flex items-center justify-center">
-                  <Users className="w-5 h-5" />
-                </div>
+          {/* Card 3: Dalam Pendampingan */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs hover:border-amber-300 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Dalam Pendampingan
+              </span>
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <GraduationCap className="w-5 h-5" />
               </div>
-              <div className="text-3xl font-black text-indigo-900">{totalUsers}</div>
-              <Link
-                href="/admin/users"
-                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 inline-flex items-center gap-1"
-              >
-                {totalVerifikator} Verifikator aktif <ArrowRight className="w-3 h-3" />
-              </Link>
             </div>
-          ) : (
-            <div className="bg-white p-6 rounded-3xl border border-rose-200 shadow-sm space-y-3 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-2 h-full bg-rose-500" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
-                  Ditolak / Revisi
-                </span>
-                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center">
-                  <XCircle className="w-5 h-5" />
-                </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-amber-800">{totalMentoring.toLocaleString('id-ID')}</span>
+              <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+                4 Tahap Aktif
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Peserta kurasi, pelatihan & sertifikasi
+            </p>
+          </div>
+
+          {/* Card 4: IKM Naik Kelas */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-300 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                IKM Naik Kelas
+              </span>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Award className="w-5 h-5" />
               </div>
-              <div className="text-3xl font-black text-rose-800">{rejected}</div>
-              <p className="text-[11px] text-rose-600 font-medium">Memerlukan perbaikan berkas</p>
             </div>
-          )}
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-emerald-800">{naikKelasCount.toLocaleString('id-ID')}</span>
+              <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                Maju & Unggulan
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Tembus pasar modern, ritel & ekspor
+            </p>
+          </div>
 
         </div>
 
-        {/* Superadmin Exclusive Quick Panel */}
-        {isSuperadmin && (
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
-              <div className="flex items-center gap-2.5">
-                <Crown className="w-5 h-5 text-amber-500" />
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm sm:text-base">Panel Hak Akses Super Administrator</h3>
-                  <p className="text-xs text-slate-400">Pusat kendali pengaturan dan integritas database dinas</p>
-                </div>
-              </div>
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold self-start sm:self-auto">
-                Full CRUD Mode Aktif
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-slate-800">
-                  <UserPlus className="w-4 h-4 text-emerald-600" />
-                  <span>Kelola Akun & Petugas</span>
-                </div>
-                <p className="text-slate-500 leading-relaxed">
-                  Tambah akun baru verifikator, ubah role, reset kata sandi petugas, atau hapus user yang tidak bertugas lagi.
-                </p>
-                <Link href="/admin/users" className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1 pt-1">
-                  Buka Manajemen User &rarr;
-                </Link>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-slate-800">
-                  <FileCheck2 className="w-4 h-4 text-blue-600" />
-                  <span>Kontrol Penuh Data UMKM</span>
-                </div>
-                <p className="text-slate-500 leading-relaxed">
-                  Superadmin dapat mengoreksi data pendaftaran, menghapus permohonan fiktif/spam, serta meninjau catatan verifikasi.
-                </p>
-                <Link href="/admin/verifikasi" className="text-blue-700 font-bold hover:underline inline-flex items-center gap-1 pt-1">
-                  Buka Ruang Verifikasi &rarr;
-                </Link>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-slate-800">
-                  <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>Database Cloud Supabase</span>
-                </div>
-                <p className="text-slate-500 leading-relaxed">
-                  Database PostgreSQL terintegrasi aman di cloud Supabase Singapore (ap-southeast-1) siap melayani vercel live production.
-                </p>
-                <span className="text-purple-700 font-bold inline-flex items-center gap-1 pt-1">
-                  Status: Terhubung & Sinkron
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* GIS Interactive Map for Manado */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-lg font-bold text-slate-900">
-                  GIS Pemetaan Pelaku Usaha Kota Manado
-                </h3>
-              </div>
-              <p className="text-xs text-slate-500">
-                Peta sebaran koordinat seluruh pemohon pendaftaran UMKM di 11 Kecamatan.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-medium">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Disetujui ({approved})</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Pending ({pending})</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Ditolak ({rejected})</span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl overflow-hidden border border-slate-200">
-            <MapDisplay merchants={allMerchants} height="400px" />
-          </div>
-        </div>
-
-        {/* Grid: Pending Action list & Category Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* MIDDLE ROW: SEBARAN 15 KAB/KOTA & GIS MAP SULUT */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Col 1: Permohonan Mendesak Menunggu Verifikasi */}
-          <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-600" />
-                <h3 className="font-bold text-slate-900 text-base">
-                  Antrean Permohonan Masuk (Pending)
-                </h3>
-              </div>
-              <Link
-                href="/admin/verifikasi?status=PENDING"
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
-              >
-                Lihat Semua ({pending})
-              </Link>
-            </div>
-
-            <div className="divide-y divide-slate-100 flex-1">
-              {recentPending.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-400">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-50" />
-                  Semua permohonan telah selesai diverifikasi!
-                </div>
-              ) : (
-                recentPending.map((m) => (
-                  <div key={m.id} className="py-3.5 flex items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900">{m.businessName}</span>
-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">
-                          {m.registrationNo}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        {m.ownerName} • {m.category} (Kec. {m.district})
-                      </p>
-                    </div>
-
-                    <Link
-                      href={`/admin/verifikasi?id=${m.id}`}
-                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold shrink-0 transition-colors"
-                    >
-                      Verifikasi &rarr;
-                    </Link>
+          {/* Sebaran IKM per Kabupaten / Kota (Bar representation matching dashboard.jpeg) */}
+          <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4" />
                   </div>
-                ))
-              )}
-            </div>
-          </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                      Sebaran IKM per Kabupaten / Kota
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Distribusi {totalDb.toLocaleString('id-ID')} IKM di seluruh 15 daerah Sulawesi Utara
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/admin/ikm"
+                  className="text-xs font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1"
+                >
+                  Detail Tabel <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
 
-          {/* Col 2: Komoditas & Wilayah */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* Category Stats */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center justify-between">
-                <span>Distribusi Komoditas Usaha</span>
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-              </h3>
-
-              <div className="space-y-3">
-                {categoryStats.map((item) => {
-                  const percent = total > 0 ? Math.round((item._count.id / total) * 100) : 0;
-                  return (
-                    <div key={item.category} className="space-y-1">
-                      <div className="flex justify-between text-xs font-medium">
-                        <span className="text-slate-700 truncate max-w-[200px]">{item.category}</span>
-                        <span className="text-slate-500 font-bold">{item._count.id} ({percent}%)</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full transition-all"
-                          style={{ width: `${percent}%` }}
-                        />
+              {/* Bar List */}
+              <div className="space-y-2.5 mt-4 max-h-[380px] overflow-y-auto pr-1">
+                {regencyBreakdown.map((item, idx) => (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-medium">
+                      <span className="text-slate-700 font-semibold truncate max-w-[220px]">
+                        {idx + 1}. {item.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-900 font-black">{item.count.toLocaleString('id-ID')} IKM</span>
+                        <span className="text-slate-400 text-[11px]">({item.percent}%)</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* District distribution */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center justify-between">
-                <span>Sebaran Per Kecamatan</span>
-                <MapPin className="w-4 h-4 text-emerald-600" />
-              </h3>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {districtStats.map((d) => (
-                  <div key={d.district} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-slate-500 font-medium truncate">{d.district}</div>
-                    <div className="text-base font-black text-slate-900">{d._count.id} Usaha</div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-sky-500 to-blue-600 h-full rounded-full transition-all"
+                        style={{ width: item.count > 0 ? `${Math.max(8, Math.round((item.count / maxRegencyCount) * 100))}%` : '0%' }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Sumber: Database Terpadu SIPIKEM SULUT 2026</span>
+              <span className="font-bold text-slate-700">Total 15 Kab/Kota</span>
+            </div>
           </div>
 
+          {/* GIS Pemetaan Sebaran IKM Sulut */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                      GIS Pemetaan IKM Sulut
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Peta koordinat sebaran sentra IKM
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/admin/peta"
+                  className="text-xs font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1"
+                >
+                  Layar Penuh <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {/* Map Preview */}
+              <div className="mt-4 rounded-2xl overflow-hidden border border-slate-200">
+                <MapDisplay merchants={mapPins} height="320px" />
+              </div>
+            </div>
+
+            {/* Quick Map Stats */}
+            <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="p-2 bg-slate-50 rounded-xl">
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Terdata</div>
+                <div className="font-black text-slate-900">{totalDb.toLocaleString('id-ID')} IKM</div>
+              </div>
+              <div className="p-2 bg-slate-50 rounded-xl">
+                <div className="text-[10px] text-slate-400 uppercase font-bold">GPS Aktif</div>
+                <div className="font-black text-emerald-700">{allMerchants.filter(m => m.latitude && m.longitude).length} Valid</div>
+              </div>
+              <div className="p-2 bg-slate-50 rounded-xl">
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Cakupan</div>
+                <div className="font-black text-sky-700">{regencyStatsDb.length} Daerah</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* BOTTOM ROW: DONUT / KATEGORI, STATUS INTEGRASI & SCORE, AGENDA */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          {/* Col 1: Komposisi Kategori IKM */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <PieChart className="w-4 h-4 text-sky-600" />
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Kategori Komoditas IKM
+                  </h3>
+                </div>
+                <span className="text-[11px] font-bold text-slate-400">Proporsi (%)</span>
+              </div>
+
+              <div className="space-y-3 mt-4 max-h-[380px] overflow-y-auto pr-1">
+                {categoryDistribution.map((c) => (
+                  <div key={c.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-700 font-medium truncate max-w-[200px]">{c.label}</span>
+                      <span className="text-slate-900 font-extrabold">{c.count} IKM ({c.percent}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className={`${c.color} h-full rounded-full transition-all`} style={{ width: `${Math.max(c.percent > 0 ? 6 : 0, c.percent)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>Sektor Terbesar: <b>{largestCategory}</b></span>
+              <span className="font-bold text-sky-600">{largestCategoryPercent}% ({categoryDistribution[0]?.count || 0} IKM)</span>
+            </div>
+          </div>
+
+          {/* Col 2: Status Integrasi Data & Tahap Pendampingan */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Status Integrasi & Pendampingan
+                  </h3>
+                </div>
+                <span className="text-[11px] font-bold text-blue-600">Aktif</span>
+              </div>
+
+              {/* Data Completeness Ratio */}
+              <div className="mt-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-700">Integrasi Legalitas & Profil</span>
+                  <span className="text-sky-700">{integratedNibCount.toLocaleString('id-ID')} / {totalDb.toLocaleString('id-ID')} ({completenessPercent}%)</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
+                  <div className="bg-sky-600 h-full transition-all" style={{ width: `${completenessPercent}%` }} />
+                  <div className="bg-slate-300 h-full transition-all" style={{ width: `${incompletePercent}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-600" /> Terintegrasi ({completenessPercent}%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" /> Belum Lengkap ({incompletePercent}%)</span>
+                </div>
+              </div>
+
+              {/* Mentoring Stages */}
+              <div className="mt-4 space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Tahap Pendampingan ({totalMentoring} IKM)
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 bg-sky-50/70 border border-sky-100 rounded-xl">
+                    <div className="text-slate-500 text-[10px]">Kurasi & Asesmen</div>
+                    <div className="font-black text-sky-900 text-sm mt-0.5">{kurasiCount} IKM</div>
+                  </div>
+                  <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-xl">
+                    <div className="text-slate-500 text-[10px]">Pelatihan Teknis</div>
+                    <div className="font-black text-blue-900 text-sm mt-0.5">{pelatihanCount} IKM</div>
+                  </div>
+                  <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-xl">
+                    <div className="text-slate-500 text-[10px]">Fasilitasi Sertifikasi</div>
+                    <div className="font-black text-amber-900 text-sm mt-0.5">{sertifikasiCount} IKM</div>
+                  </div>
+                  <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-xl">
+                    <div className="text-slate-500 text-[10px]">Akses Pasar & Ekspor</div>
+                    <div className="font-black text-emerald-900 text-sm mt-0.5">{pasarCount} IKM</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <Link href="/admin/pembinaan" className="text-sky-600 font-bold hover:underline inline-flex items-center gap-1">
+                Buka Ruang Pembinaan &rarr;
+              </Link>
+            </div>
+          </div>
+
+          {/* Col 3: Agenda Pembinaan & Pelatihan Terdekat */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-sky-600" />
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Agenda Kegiatan & Pembinaan
+                  </h3>
+                </div>
+                <span className="text-[11px] font-bold text-slate-400">Jadwal</span>
+              </div>
+
+              <div className="space-y-3 mt-3">
+                {agendaPembinaan.map((ag) => (
+                  <div key={ag.title} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-sky-50/40 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ag.statusColor}`}>
+                        {ag.status}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">{ag.date}</span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 mt-1 line-clamp-1">
+                      {ag.title}
+                    </h4>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                      <span>{ag.location}</span>
+                      <span className="font-medium text-sky-700">{ag.participants}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-400 text-[11px]">Disperindag Prov. Sulut 2026</span>
+              <span className="font-bold text-sky-600 cursor-pointer hover:underline">
+                Lihat Kalender &rarr;
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* IKM SCORE LEVEL METRICS */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <Award className="w-5 h-5 text-amber-500" />
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                  Distribusi Pemeringkatan IKM Score Sulawesi Utara
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Standarisasi level kematangan usaha: Pemula, Berkembang, Maju, hingga Unggulan
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/admin/ikm-score"
+              className="text-xs font-bold text-sky-600 hover:text-sky-800"
+            >
+              Matriks Penilaian Lengkap &rarr;
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            {IKM_SCORE_TIERS.map((tier) => {
+              const count = tierMap.get(tier.name) || 0;
+              const percent = totalDb > 0 ? Math.round((count / totalDb) * 100) : 0;
+              return (
+                <div key={tier.name} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${tier.color}`}>
+                      {tier.name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">Skor: {tier.minScore}-{tier.maxScore}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <div className="text-xl font-black text-slate-900">
+                      {count.toLocaleString('id-ID')} IKM
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {percent}%
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                    {tier.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
       </main>

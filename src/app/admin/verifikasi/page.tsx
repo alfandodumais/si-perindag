@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import SuratKeteranganModal from '@/components/SuratKeteranganModal';
-import { KECAMATAN_MANADO } from '@/lib/constants';
+import { KABUPATEN_KOTA_SULUT } from '@/lib/constants';
 import { 
   FileCheck2, 
   Search, 
@@ -27,7 +27,9 @@ import {
   ChevronRight,
   Trash2,
   Crown,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Building2
 } from 'lucide-react';
 import { formatDateIndo, formatDateTimeIndo, formatRupiah } from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -45,7 +47,7 @@ function VerifikasiContent() {
   const [merchants, setMerchants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [districtFilter, setDistrictFilter] = useState('ALL');
+  const [regencyFilter, setRegencyFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Selected merchant for Verification Modal
@@ -86,7 +88,7 @@ function VerifikasiContent() {
     try {
       let url = `/api/merchants?limit=200`;
       if (statusFilter !== 'ALL') url += `&status=${statusFilter}`;
-      if (districtFilter !== 'ALL') url += `&district=${encodeURIComponent(districtFilter)}`;
+      if (regencyFilter !== 'ALL') url += `&regency=${encodeURIComponent(regencyFilter)}`;
       if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
 
       const res = await fetch(url);
@@ -112,7 +114,7 @@ function VerifikasiContent() {
 
   useEffect(() => {
     fetchMerchants();
-  }, [statusFilter, districtFilter]);
+  }, [statusFilter, regencyFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,31 +259,31 @@ function VerifikasiContent() {
     document.body.removeChild(link);
   };
 
-  const districts = ['ALL', ...KECAMATAN_MANADO];
+  const regencies = ['ALL', ...KABUPATEN_KOTA_SULUT];
 
   return (
     <AdminSidebarLayout user={userSession}>
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="w-full px-3 sm:px-5 lg:px-6 py-6 space-y-6">
         
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
-              <FileCheck2 className="w-3.5 h-3.5 text-emerald-600" />
-              Modul Verifikasi Petugas
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold uppercase tracking-wider mb-2">
+              <FileCheck2 className="w-3.5 h-3.5 text-sky-700" />
+              Modul Verifikasi Petugas Disperindag Sulut
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Verifikasi Pendaftaran Pelaku Usaha (UMKM)
+              Verifikasi Pendaftaran IKM Sulawesi Utara
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Periksa kelengkapan berkas, validitas KTP, dan akurasi titik koordinat usaha sebelum menerbitkan tanda terdaftar resmi.
+              Periksa kelengkapan 8 kluster data, legalitas NIB, foto produk, dan akurasi lokasi sebelum menerbitkan Surat Tanda Bukti Pendaftaran IKM (STBP-IKM) sah.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-2"
             >
               <Download className="w-4 h-4 text-slate-500" />
               Export CSV / Excel
@@ -290,7 +292,7 @@ function VerifikasiContent() {
         </div>
 
         {/* Filter Tabs & Search Bar */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             {[
               { label: 'Semua Permohonan', value: 'ALL' },
@@ -305,7 +307,7 @@ function VerifikasiContent() {
                   onClick={() => setStatusFilter(tab.value)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     active
-                      ? 'bg-slate-900 text-white shadow'
+                      ? 'bg-[#0c233c] text-white shadow'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -322,27 +324,27 @@ function VerifikasiContent() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama usaha, pemilik, NIK, atau nomor pendaftaran..."
-                className="w-full pl-10 pr-24 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Cari nama IKM, pemilik, NIK, atau nomor registrasi..."
+                className="w-full pl-10 pr-24 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
+                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg transition-colors"
               >
-                Cari
+                Cari Data
               </button>
             </form>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="w-4 h-4 text-slate-400 shrink-0" />
               <select
-                value={districtFilter}
-                onChange={(e) => setDistrictFilter(e.target.value)}
-                className="text-xs sm:text-sm py-2 px-3 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-48"
+                value={regencyFilter}
+                onChange={(e) => setRegencyFilter(e.target.value)}
+                className="text-xs sm:text-sm py-2 px-3 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 w-full sm:w-56 font-medium"
               >
-                {districts.map((d) => (
-                  <option key={d} value={d}>
-                    {d === 'ALL' ? 'Semua Kecamatan' : d}
+                {regencies.map((r) => (
+                  <option key={r} value={r}>
+                    {r === 'ALL' ? 'Semua Kabupaten/Kota' : r}
                   </option>
                 ))}
               </select>
@@ -406,27 +408,27 @@ function VerifikasiContent() {
 
                       {/* Location */}
                       <td className="py-4 px-4">
-                        <div className="font-medium text-slate-800">Kec. {m.district}</div>
+                        <div className="font-semibold text-slate-800">{m.regency || m.district || 'Sulawesi Utara'}</div>
                         <div className="text-xs text-slate-500 truncate max-w-[200px]" title={m.address}>
-                          {m.address}
+                          {m.district ? `Kec. ${m.district}, ` : ''}{m.address}
                         </div>
                       </td>
 
                       {/* Status Badge */}
                       <td className="py-4 px-4 text-center">
                         {m.status === 'APPROVED' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Disetujui
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Terverifikasi Sah
                           </span>
                         )}
                         {m.status === 'PENDING' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" /> Pending
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" /> Menunggu Verifikasi
                           </span>
                         )}
                         {m.status === 'REJECTED' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
-                            <XCircle className="w-3.5 h-3.5 text-rose-600" /> Ditolak
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            <XCircle className="w-3.5 h-3.5 text-rose-600" /> Ditolak / Revisi
                           </span>
                         )}
                       </td>
@@ -440,10 +442,14 @@ function VerifikasiContent() {
                               setActionNotes(m.adminNotes || '');
                               setModalError('');
                             }}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 ${
+                              m.status === 'PENDING'
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300'
+                                : 'bg-sky-600 hover:bg-sky-700 text-white'
+                            }`}
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Review</span>
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{m.status === 'PENDING' ? 'Verifikasi' : 'Detail'}</span>
                           </button>
 
                           {userSession?.role === 'SUPERADMIN' && (

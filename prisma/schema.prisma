@@ -17,7 +17,7 @@ model User {
   name      String
   email     String?
   password  String
-  role      String   @default("ADMIN") // ADMIN, VERIFICATOR
+  role      String   @default("ADMIN") // SUPERADMIN, ADMIN
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -25,27 +25,81 @@ model User {
 model MerchantRegistration {
   id             String    @id @default(uuid())
   registrationNo String    @unique
+
+  // 1. Identitas IKM
   nik            String
   ownerName      String
   phone          String
   email          String?
-  businessName   String
-  category       String    // Kuliner, Retail/Kelontong, Fashion, Jasa, Agribisnis, Kerajinan, dll
-  scale          String    // Mikro, Kecil, Menengah
-  monthlyRevenue Float?
-  employeeCount  Int?      @default(1)
-  address        String
+  businessName   String    // Nama IKM / Usaha
+  yearFounded    Int?      // Tahun Berdiri
+  regency        String?   @default("Manado") // Kabupaten / Kota di Sulawesi Utara
   district       String    // Kecamatan
   village        String?   // Kelurahan / Desa
+  address        String    // Alamat / Lokasi Usaha
   postalCode     String?
   latitude       Float
   longitude      Float
-  ktpImage       String?   // Base64 Data URL or file link
-  businessImage  String?   // Base64 Data URL or file link
-  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  adminNotes     String?
-  verifiedAt     DateTime?
-  verifiedBy     String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+
+  // 2. Profil Usaha
+  category       String    // Bidang Usaha / Kategori IKM (Makanan & Minuman, Kerajinan, Fashion, dll)
+  scale          String    // Skala IKM (Mikro, Kecil, Menengah)
+  employeeCount  Int?      @default(1) // Jumlah Tenaga Kerja
+
+  // 3. Produk IKM
+  mainProduct        String?   // Nama Produk Utama
+  productType        String?   // Jenis Produk
+  rawMaterial        String?   // Bahan Baku
+  productionCapacity String?   // Kapasitas Produk (misal: 1.000 pcs / bulan)
+  productPrice       Float?    // Estimasi Harga Produk
+  productAdvantage   String?   // Keunggulan Produk
+
+  // 4. Legalitas & Sertifikasi
+  nib             String?   // NIB (Nomor Induk Berusaha)
+  businessLicense String?   // Izin Usaha (Ada, Dalam Proses, Belum Ada)
+  npwp            String?   // NPWP
+  halalCert       String?   // Sertifikat Halal
+  bpomPirt        String?   // BPOM / P-IRT
+  haki            String?   // HAKI / Merek
+
+  // 5. Produksi dan Mutu
+  productionEquipment String? // Peralatan Produksi / Teknologi yang digunakan
+
+  // 6. Pemasaran & Keuangan
+  monthlyRevenue Float?    // Omzet / Penjualan Bulanan
+  marketChannels String?   @default("Offline") // Pemasaran: Online, Offline, Keduanya
+  socialMedia    String?   // Sosial Media / Marketplace
+
+  // 7. Permodalan & Kemitraan
+  fundingSource String?   // Sumber Modal (Mandiri, Pinjaman, Hibah, Investor)
+  bankAccess    String?   // Akses Perbankan (KUR, Kredit Komersial, Belum Ada)
+  partnerships  String?   // Kemitraan (BUMN, Perbankan, Koperasi, Buyer, dll)
+
+  // 8. Permasalahan & Kebutuhan Pembinaan
+  needs String? // Kebutuhan: legalitas, mutu, kemasan, sdm, modal, akses pasar
+
+  // 9. Status Asesmen & Siklus SIPIKEM
+  ikmScore        String?   @default("Berkembang") // Pemula, Berkembang, Maju, Unggulan
+  mentoringStatus String?   @default("Pendampingan") // Pendataan, Analisis Kebutuhan, Pendampingan, Sertifikasi, Akses Pasar, Selesai
+
+  // Lampiran Berkas / Foto Fisik
+  ktpImage      String?   // Path file fisik e-KTP (/uploads/ktp-xxx.jpg)
+  businessImage String?   // Path file fisik Foto Produk/Usaha (/uploads/usaha-xxx.jpg)
+
+  // Status Verifikasi Dinas
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNotes String?
+  verifiedAt DateTime?
+  verifiedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique // 'banner_landing', 'banner_dashboard', 'ikm_categories'
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -4,8 +4,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "SI-PERINDAG Kota Manado | Portal Pendaftaran & Verifikasi UMKM",
-  description: "Sistem Informasi Pendataan dan Verifikasi Pelaku Usaha / UMKM Dinas Perindustrian dan Perdagangan Kota Manado.",
+  title: "SIPIKEM SULUT | Sistem Informasi Pembinaan IKM Sulawesi Utara",
+  description: "Portal Resmi Dinas Perindustrian dan Perdagangan Provinsi Sulawesi Utara untuk Pendataan 8 Kluster, Standardisasi Sertifikasi, dan Pembinaan IKM di 15 Kabupaten/Kota.",
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className="flex flex-col min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-perindag-500 selection:text-white">
+      <body className="flex flex-col min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-sky-600 selection:text-white">
         <Navbar />
         <main className="flex-grow">{children}</main>
         <Footer />

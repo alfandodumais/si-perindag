@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { 
@@ -20,48 +20,84 @@ import {
   ArrowRight,
   ShieldCheck,
   FileCheck,
-  Loader2
+  Loader2,
+  Sparkles,
+  Award
 } from 'lucide-react';
-import { KECAMATAN_MANADO, MANADO_CENTER, KATEGORI_USAHA } from '@/lib/constants';
+import { KABUPATEN_KOTA_SULUT, KATEGORI_IKM_SULUT, SULUT_CENTER } from '@/lib/constants';
 
 // Dynamic import for Leaflet map component to prevent SSR issues
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-72 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-300">
-      Memuat peta interaktif...
+      Memuat peta interaktif Sulawesi Utara...
     </div>
   ),
 });
 
 export default function DaftarPage() {
   const [formData, setFormData] = useState({
+    // 1. Identitas Usaha
     nik: '',
     ownerName: '',
     phone: '',
     email: '',
     businessName: '',
-    category: KATEGORI_USAHA[0],
-    scale: 'Mikro',
-    monthlyRevenue: '',
-    employeeCount: '1',
-    address: '',
-    district: 'Wenang',
+    regency: 'Kota Manado',
+    district: '',
     village: '',
-    postalCode: '',
-    latitude: MANADO_CENTER.latitude,
-    longitude: MANADO_CENTER.longitude,
-    ktpImage: '',
+    address: '',
+    yearFounded: new Date().getFullYear().toString(),
+    employeeCount: 3,
+    scale: 'KECIL',
+
+    // 2. Data Produk
+    category: KATEGORI_IKM_SULUT[0],
+    mainProduct: '',
+    productType: '',
+    rawMaterial: '',
+    productionCapacity: '',
+    productPrice: 25000,
+    productAdvantage: '',
     businessImage: '',
+    ktpImage: '',
+
+    // 3. Legalitas & Sertifikasi
+    nib: '',
+    businessLicense: 'Izin Usaha Mikro',
+    npwp: '',
+    halalCert: '',
+    bpomPirt: '',
+    haki: '',
+
+    // 4. Finansial & Operasional
+    monthlyRevenue: 10000000,
+    fundingSource: 'Modal Mandiri',
+    marketChannels: 'Offline & Marketplace Online',
+    needs: 'Fasilitasi Sertifikasi Halal & Kurasi Pasar Ekspor',
+
+    // GIS Coordinates
+    latitude: SULUT_CENTER.latitude,
+    longitude: SULUT_CENTER.longitude,
   });
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successResult, setSuccessResult] = useState<any>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>(KATEGORI_IKM_SULUT as unknown as string[]);
 
-  const categories = KATEGORI_USAHA;
-  const districts = KECAMATAN_MANADO;
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+        }
+      })
+      .catch((err) => console.error('Error fetching categories in daftar:', err));
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -76,7 +112,7 @@ export default function DaftarPage() {
     }));
   };
 
-  // Upload image physically to server disk (saves clean relative URL /uploads/xxx.jpg)
+  // Upload image physically to server disk
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'ktpImage' | 'businessImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,7 +132,7 @@ export default function DaftarPage() {
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('type', field === 'ktpImage' ? 'ktp' : 'usaha');
+      uploadFormData.append('type', field === 'ktpImage' ? 'ktp' : 'produk');
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -110,7 +146,7 @@ export default function DaftarPage() {
 
       setFormData((prev) => ({
         ...prev,
-        [field]: data.url, // Clean physical path e.g. /uploads/ktp-1725...jpg
+        [field]: data.url,
       }));
     } catch (err: any) {
       console.error('Error uploading file:', err);
@@ -126,7 +162,7 @@ export default function DaftarPage() {
 
     // Validation
     if (!formData.nik || formData.nik.length < 16) {
-      setErrorMessage('NIK wajib diisi minimal 16 digit sesuai KTP.');
+      setErrorMessage('NIK pemilik wajib diisi minimal 16 digit sesuai KTP.');
       return;
     }
     if (!formData.ownerName.trim()) {
@@ -134,19 +170,15 @@ export default function DaftarPage() {
       return;
     }
     if (!formData.phone.trim()) {
-      setErrorMessage('Nomor WhatsApp/HP aktif wajib diisi.');
+      setErrorMessage('Nomor WhatsApp aktif wajib diisi.');
       return;
     }
     if (!formData.businessName.trim()) {
-      setErrorMessage('Nama usaha/toko wajib diisi.');
+      setErrorMessage('Nama IKM / unit usaha wajib diisi.');
       return;
     }
     if (!formData.address.trim()) {
       setErrorMessage('Alamat lokasi usaha wajib diisi.');
-      return;
-    }
-    if (!formData.latitude || !formData.longitude) {
-      setErrorMessage('Titik koordinat usaha wajib ditentukan pada peta.');
       return;
     }
 
@@ -154,9 +186,7 @@ export default function DaftarPage() {
     try {
       const res = await fetch('/api/merchants', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
@@ -178,54 +208,54 @@ export default function DaftarPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       {/* Header Banner */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold mb-3">
-          <FileCheck className="w-4 h-4 text-emerald-600" />
-          Formulir Pendataan Resmi
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-100 text-sky-900 border border-sky-200 text-xs font-bold mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-sky-700" />
+          Formulir Pendataan IKM Provinsi Sulawesi Utara
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-          Pendaftaran Usaha & Pedagang (UMKM)
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          Pendaftaran Industri Kecil dan Menengah (IKM)
         </h1>
-        <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-2xl mx-auto">
-          Silakan isi formulir di bawah ini dengan informasi yang valid dan tentukan titik koordinat tempat usaha Anda melalui peta.
+        <p className="text-slate-600 text-xs sm:text-sm mt-2 max-w-2xl mx-auto">
+          Daftarkan unit usaha IKM Anda di 15 Kabupaten/Kota untuk memperoleh Surat Tanda Bukti Pendaftaran (STBP-IKM) dan fasilitasi pembinaan dari Dinas Perindustrian dan Perdagangan Provinsi Sulawesi Utara.
         </p>
       </div>
 
-      {/* Success Modal / State */}
+      {/* Success State */}
       {successResult ? (
-        <div className="bg-white rounded-3xl border border-emerald-200 p-8 sm:p-12 shadow-xl text-center space-y-6 animate-fadeIn">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+        <div className="bg-white rounded-3xl border border-sky-200 p-8 sm:p-12 shadow-xl text-center space-y-6 animate-fadeIn">
+          <div className="w-20 h-20 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-12 h-12" />
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-700">
               Pendaftaran Berhasil Dikirim
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Selamat, Data Usaha Anda Telah Masuk!
+              Selamat, Data IKM Anda Telah Masuk!
             </h2>
-            <p className="text-sm text-slate-600 max-w-lg mx-auto">
-              Permohonan Anda saat ini berstatus <span className="font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Menunggu Verifikasi</span> oleh petugas Dinas Perdagangan.
+            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+              Data usaha Anda telah tercatat dalam basis data SIPIKEM SULUT dan saat ini berstatus <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">Menunggu Verifikasi</span> oleh petugas Disperindag.
             </p>
           </div>
 
           {/* Registration Code Card */}
-          <div className="max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-2 shadow-sm">
-            <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+          <div className="max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-2 shadow-xs">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
               Nomor Registrasi Anda (Simpan Nomor Ini):
             </span>
-            <div className="text-2xl sm:text-3xl font-mono font-black text-perindag-700 tracking-widest selection:bg-emerald-200">
+            <div className="text-2xl sm:text-3xl font-mono font-black text-sky-800 tracking-widest selection:bg-sky-200">
               {successResult.registrationNo}
             </div>
             <p className="text-xs text-slate-500">
-              Nama Usaha: <strong className="text-slate-800">{successResult.businessName}</strong> ({successResult.ownerName})
+              Nama IKM: <strong className="text-slate-800">{successResult.businessName}</strong> ({successResult.regency || successResult.district})
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link
               href={`/tracking?q=${successResult.registrationNo}`}
-              className="w-full sm:w-auto px-6 py-3 bg-perindag-600 hover:bg-perindag-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
             >
               Cek Status & Unduh Resi <ArrowRight className="w-4 h-4" />
             </Link>
@@ -234,29 +264,10 @@ export default function DaftarPage() {
               type="button"
               onClick={() => {
                 setSuccessResult(null);
-                setFormData({
-                  nik: '',
-                  ownerName: '',
-                  phone: '',
-                  email: '',
-                  businessName: '',
-                  category: KATEGORI_USAHA[0],
-                  scale: 'Mikro',
-                  monthlyRevenue: '',
-                  employeeCount: '1',
-                  address: '',
-                  district: 'Wenang',
-                  village: '',
-                  postalCode: '',
-                  latitude: MANADO_CENTER.latitude,
-                  longitude: MANADO_CENTER.longitude,
-                  ktpImage: '',
-                  businessImage: '',
-                });
               }}
-              className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all"
+              className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-xl transition-all"
             >
-              Daftarkan Usaha Lain
+              Daftarkan IKM Lain
             </button>
           </div>
         </div>
@@ -265,7 +276,7 @@ export default function DaftarPage() {
         <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 sm:p-10 rounded-3xl border border-slate-200 shadow-sm">
           
           {errorMessage && (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-700 text-sm">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-700 text-xs sm:text-sm">
               <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
               <div>
                 <strong className="font-bold">Periksa Kembali Formulir:</strong>
@@ -274,20 +285,20 @@ export default function DaftarPage() {
             </div>
           )}
 
-          {/* Section 1: Data Identitas Pemilik */}
+          {/* Section 1: Data Identitas Pemilik & IKM */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center font-bold text-sm">
                 1
               </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Data Identitas Pemilik Usaha
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                Data Identitas Pemilik & IKM
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nomor Induk Kependudukan (NIK) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -299,15 +310,15 @@ export default function DaftarPage() {
                     required
                     value={formData.nik}
                     onChange={handleInputChange}
-                    placeholder="Contoh: 1472012345670001"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 font-mono"
+                    placeholder="Contoh: 7171012345670001"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
                   />
                 </div>
-                <span className="text-[11px] text-slate-500">Wajib 16 digit sesuai e-KTP.</span>
+                <span className="text-[10px] text-slate-500">16 digit sesuai e-KTP.</span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nama Lengkap Pemilik <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -319,14 +330,14 @@ export default function DaftarPage() {
                     value={formData.ownerName}
                     onChange={handleInputChange}
                     placeholder="Nama sesuai KTP"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nomor WhatsApp / HP Aktif <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nomor WhatsApp Aktif <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -336,15 +347,14 @@ export default function DaftarPage() {
                     required
                     value={formData.phone}
                     onChange={handleInputChange}
-                    placeholder="Contoh: 081234567890"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 font-mono"
+                    placeholder="081234567890"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
                   />
                 </div>
-                <span className="text-[11px] text-slate-500">Digunakan untuk informasi hasil verifikasi.</span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Alamat Email (Opsional)
                 </label>
                 <div className="relative">
@@ -354,29 +364,15 @@ export default function DaftarPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="nama@email.com"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500"
+                    placeholder="ikm@sulutprov.go.id"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Section 2: Data Profil Usaha */}
-          <div className="space-y-4 pt-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                2
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Profil & Jenis Usaha
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nama Usaha / Merk Dagang / Toko <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama IKM / Merek Usaha <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Store className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -386,104 +382,45 @@ export default function DaftarPage() {
                     required
                     value={formData.businessName}
                     onChange={handleInputChange}
-                    placeholder="Contoh: Toko Berkah Jaya / Kedai Kopi Nusantara"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 font-medium"
+                    placeholder="Contoh: CV. Minahasa Sukses Mandiri / Keripik Pisang Goroho Khas Sulut"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Kategori Usaha / Komoditas <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kabupaten / Kota di Sulawesi Utara <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 bg-white"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  name="regency"
+                  value={formData.regency}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-bold text-slate-800"
+                >
+                  {KABUPATEN_KOTA_SULUT.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Skala Usaha <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Layers className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <select
-                    name="scale"
-                    value={formData.scale}
-                    onChange={handleInputChange}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 bg-white"
-                  >
-                    <option value="Mikro">Usaha Mikro (Omset &lt; 300 Juta/thn)</option>
-                    <option value="Kecil">Usaha Kecil (Omset 300 Jt - 2,5 Miliar/thn)</option>
-                    <option value="Menengah">Usaha Menengah (Omset 2,5 M - 50 Miliar/thn)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Estimasi Omset Rata-rata / Bulan (Rp)
-                </label>
-                <div className="relative">
-                  <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="number"
-                    name="monthlyRevenue"
-                    value={formData.monthlyRevenue}
-                    onChange={handleInputChange}
-                    placeholder="Contoh: 15000000"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Jumlah Tenaga Kerja / Karyawan
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kecamatan
                 </label>
                 <input
-                  type="number"
-                  name="employeeCount"
-                  min="1"
-                  value={formData.employeeCount}
+                  type="text"
+                  name="district"
+                  value={formData.district}
                   onChange={handleInputChange}
-                  placeholder="Jumlah orang"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 font-mono"
+                  placeholder="Kecamatan domisili IKM"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Section 3: Alamat & Titik Koordinat Peta */}
-          <div className="space-y-4 pt-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                3
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Alamat & Titik Koordinat Peta
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Tentukan posisi gerai/toko Anda pada peta digital agar diverifikasi lokasinya oleh dinas.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Alamat Lengkap Lokasi Usaha <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Alamat Lengkap Workshop / Rumah Produksi <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   name="address"
@@ -491,93 +428,171 @@ export default function DaftarPage() {
                   rows={2}
                   value={formData.address}
                   onChange={handleInputChange}
-                  placeholder="Contoh: Jl. Pierre Tendean (Boulevard) No. 45 / Kawasan Megamas"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500"
+                  placeholder="Nama jalan, nomor, RT/RW, dan patokan lokasi"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
+            </div>
+          </div>
 
+          {/* Section 2: Data Produk IKM */}
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center font-bold text-sm">
+                2
+              </div>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                Data Produk & Kapasitas Produksi
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Kecamatan <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kategori Komoditas IKM <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  name="district"
-                  value={formData.district}
+                  name="category"
+                  value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500 bg-white"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-semibold"
                 >
-                  {districts.map((dis) => (
-                    <option key={dis} value={dis}>{dis}</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Kelurahan / Desa
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Produk Utama <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="village"
-                  value={formData.village}
+                  name="mainProduct"
+                  required
+                  value={formData.mainProduct}
                   onChange={handleInputChange}
-                  placeholder="Contoh: Wenang Selatan / Bahu / Ranotana / Paniki Bawah"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-perindag-500"
+                  placeholder="Contoh: Abon Ikan Cakalang Fufu"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Bahan Baku Utama (Sumber Lokal Sulut)
+                </label>
+                <input
+                  type="text"
+                  name="rawMaterial"
+                  value={formData.rawMaterial}
+                  onChange={handleInputChange}
+                  placeholder="Ikan cakalang segar Bitung / Kelapa Minahasa"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kapasitas Produksi per Bulan
+                </label>
+                <input
+                  type="text"
+                  name="productionCapacity"
+                  value={formData.productionCapacity}
+                  onChange={handleInputChange}
+                  placeholder="Contoh: 1.000 pouch / bulan"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Harga Satuan Produk (Rp)
+                </label>
+                <input
+                  type="number"
+                  name="productPrice"
+                  value={formData.productPrice}
+                  onChange={handleInputChange}
+                  placeholder="25000"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nomor Induk Berusaha (NIB)
+                </label>
+                <input
+                  type="text"
+                  name="nib"
+                  value={formData.nib}
+                  onChange={handleInputChange}
+                  placeholder="9120001234567 atau kosongkan jika belum ada"
+                  className="w-full px-3 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
                 />
               </div>
             </div>
-
-            {/* Interactive Leaflet Map Picker Component */}
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Pilih Titik Koordinat Pada Peta Interaktif <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-[11px] text-slate-500 mb-3">
-                Geser pin hijau atau klik lokasi tempat berdagang Anda pada peta berikut. Anda juga dapat menggunakan tombol deteksi lokasi otomatis atau kolom pencarian alamat.
-              </p>
-              
-              <MapPicker
-                latitude={formData.latitude}
-                longitude={formData.longitude}
-                onChange={handleCoordinateChange}
-              />
-            </div>
           </div>
 
-          {/* Section 4: Berkas & Foto Pendukung */}
+          {/* Section 3: Titik Koordinat Peta Interaktif */}
           <div className="space-y-4 pt-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center font-bold text-sm">
+                3
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                  Titik Koordinat Peta Interaktif
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Tentukan posisi presisi workshop/gerai Anda pada peta GIS Sulawesi Utara.
+                </p>
+              </div>
+            </div>
+
+            <MapPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              onChange={handleCoordinateChange}
+            />
+          </div>
+
+          {/* Section 4: Unggah Foto Fisik */}
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center font-bold text-sm">
                 4
               </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Unggah Berkas / Foto Dokumentasi
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                Unggah Foto Fisik Produk & e-KTP
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* KTP Upload */}
+              {/* KTP */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700">
                   Foto e-KTP Pemilik Usaha
                 </label>
-                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50 relative">
+                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-sky-500 transition-colors bg-slate-50 relative">
                   {uploadingField === 'ktpImage' ? (
                     <div className="py-10 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-                      <span className="font-semibold text-slate-700">Menyimpan foto fisik ke server...</span>
+                      <Loader2 className="w-6 h-6 text-sky-600 animate-spin" />
+                      <span className="font-bold text-slate-700">Menyimpan berkas fisik ke server...</span>
                     </div>
                   ) : formData.ktpImage ? (
                     <div className="relative">
                       <img
                         src={formData.ktpImage}
                         alt="Preview KTP"
-                        className="w-full h-36 object-cover rounded-xl shadow-sm"
+                        className="w-full h-36 object-cover rounded-xl shadow-xs"
                       />
                       <button
                         type="button"
                         onClick={() => setFormData((prev) => ({ ...prev, ktpImage: '' }))}
-                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow hover:bg-rose-700 transition-colors"
+                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow"
                       >
                         Ganti Foto
                       </button>
@@ -585,10 +600,10 @@ export default function DaftarPage() {
                   ) : (
                     <label className="cursor-pointer block">
                       <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                      <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
-                        Klik untuk upload foto KTP
+                      <span className="text-xs font-bold text-sky-700 hover:text-sky-800">
+                        Klik untuk upload foto e-KTP
                       </span>
-                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG, WEBP (Maks 5 MB)</p>
+                      <p className="text-[10px] text-slate-400 mt-1">JPG, PNG, WEBP (Maks 5 MB)</p>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/jpg"
@@ -600,28 +615,28 @@ export default function DaftarPage() {
                 </div>
               </div>
 
-              {/* Toko / Usaha Upload */}
+              {/* Produk */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Foto Toko / Gerai / Produk Usaha
+                <label className="block text-xs font-bold text-slate-700">
+                  Foto Produk Utama / Tempat Produksi
                 </label>
-                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50 relative">
+                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-sky-500 transition-colors bg-slate-50 relative">
                   {uploadingField === 'businessImage' ? (
                     <div className="py-10 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-                      <span className="font-semibold text-slate-700">Menyimpan foto fisik ke server...</span>
+                      <Loader2 className="w-6 h-6 text-sky-600 animate-spin" />
+                      <span className="font-bold text-slate-700">Menyimpan berkas fisik ke server...</span>
                     </div>
                   ) : formData.businessImage ? (
                     <div className="relative">
                       <img
                         src={formData.businessImage}
-                        alt="Preview Toko"
-                        className="w-full h-36 object-cover rounded-xl shadow-sm"
+                        alt="Preview Produk"
+                        className="w-full h-36 object-cover rounded-xl shadow-xs"
                       />
                       <button
                         type="button"
                         onClick={() => setFormData((prev) => ({ ...prev, businessImage: '' }))}
-                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow hover:bg-rose-700 transition-colors"
+                        className="absolute top-2 right-2 bg-rose-600 text-white text-[10px] px-2 py-1 rounded shadow"
                       >
                         Ganti Foto
                       </button>
@@ -629,10 +644,10 @@ export default function DaftarPage() {
                   ) : (
                     <label className="cursor-pointer block">
                       <Store className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                      <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
-                        Klik untuk upload foto gerai / usaha
+                      <span className="text-xs font-bold text-sky-700 hover:text-sky-800">
+                        Klik untuk upload foto produk
                       </span>
-                      <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG, WEBP (Maks 5 MB)</p>
+                      <p className="text-[10px] text-slate-400 mt-1">JPG, PNG, WEBP (Maks 5 MB)</p>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/jpg"
@@ -646,26 +661,26 @@ export default function DaftarPage() {
             </div>
           </div>
 
-          {/* Pernyataan & Submit */}
+          {/* Submit Action */}
           <div className="pt-6 border-t border-slate-100 space-y-4">
-            <div className="flex items-start gap-2.5 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 text-xs text-slate-600 bg-sky-50 p-3.5 rounded-xl border border-sky-100">
+              <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
               <span>
-                Dengan menekan tombol submit, saya menyatakan bahwa data yang diisikan adalah benar dan bersedia dilakukan verifikasi oleh petugas Dinas Perdagangan sesuai ketentuan yang berlaku.
+                Dengan mengirimkan formulir ini, saya menyatakan bahwa data yang diisikan adalah benar dan bersedia dilakukan verifikasi oleh Dinas Perindustrian dan Perdagangan Provinsi Sulawesi Utara.
               </span>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 text-base font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 rounded-xl shadow-lg shadow-sky-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01]"
             >
               {loading ? (
                 <span>Memproses Pendaftaran...</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
-                  Kirim Pendaftaran Usaha
+                  Kirim Data Pendaftaran IKM
                 </>
               )}
             </button>
