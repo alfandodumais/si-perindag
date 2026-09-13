@@ -214,36 +214,6 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
             </button>
           </div>
 
-          {/* User Role Badge */}
-          <div className="p-3.5 mx-4 mt-4 rounded-xl bg-[#122d4a] border border-[#1d436a]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                {isSuperadmin ? (
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                    <Crown className="w-4 h-4" />
-                  </div>
-                ) : (
-                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                    <UserCheck className="w-4 h-4" />
-                  </div>
-                )}
-                <div>
-                  <span className={`text-[11px] font-bold uppercase tracking-wider block ${
-                    isSuperadmin ? 'text-amber-300' : 'text-sky-300'
-                  }`}>
-                    {isSuperadmin ? 'Superadmin' : 'Petugas Dinas'}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {isSuperadmin ? 'Akses Penuh CRUD' : 'Verifikator 15 Kab/Kota'}
-                  </span>
-                </div>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${
-                isSuperadmin ? 'bg-amber-400 animate-pulse' : 'bg-sky-400'
-              }`} />
-            </div>
-          </div>
-
           {/* Navigation Menu (10 Items matching dashboard.jpeg) */}
           <nav className="p-3 space-y-1 mt-2">
             <div className="px-3 py-1.5 text-[10px] font-bold text-sky-400/70 uppercase tracking-wider">
