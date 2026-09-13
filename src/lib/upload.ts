@@ -54,29 +54,38 @@ export async function saveBase64AsPhysicalFile(
     // Return the clean public URL path
     return `/uploads/${fileName}`;
   } catch (error) {
-    console.error('Error saving physical file from base64:', error);
+    // In serverless environments like Vercel (read-only filesystem), fallback to keeping Base64 data URL
+    console.warn('Filesystem is read-only or error saving file, falling back to base64 data URL:', error);
     return base64String;
   }
 }
 
 /**
  * Saves a File / Buffer directly from multipart/form-data to physical disk.
+ * In serverless environments like Vercel (read-only filesystem), safely falls back
+ * to returning a base64 Data URL so uploads NEVER fail.
  */
 export async function saveBufferAsPhysicalFile(
   buffer: Buffer,
   originalFilename: string,
   prefix: string = 'doc'
 ): Promise<string> {
-  const uploadDir = await getUploadDir();
-
   const parsedExt = path.extname(originalFilename).toLowerCase().replace('.', '') || 'jpg';
   const ext = ['jpg', 'jpeg', 'png', 'webp'].includes(parsedExt) ? parsedExt : 'jpg';
+  const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
-  const uniqueId = crypto.randomBytes(6).toString('hex');
-  const fileName = `${prefix}-${Date.now()}-${uniqueId}.${ext}`;
-  const filePath = path.join(uploadDir, fileName);
+  try {
+    const uploadDir = await getUploadDir();
+    const uniqueId = crypto.randomBytes(6).toString('hex');
+    const fileName = `${prefix}-${Date.now()}-${uniqueId}.${ext}`;
+    const filePath = path.join(uploadDir, fileName);
 
-  await fs.writeFile(filePath, buffer);
+    await fs.writeFile(filePath, buffer);
 
-  return `/uploads/${fileName}`;
+    return `/uploads/${fileName}`;
+  } catch (error) {
+    // In serverless environments like Vercel (read-only filesystem), fallback to Base64 data URL
+    console.warn('Filesystem is read-only or error saving buffer, falling back to base64 data URL:', error);
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
 }

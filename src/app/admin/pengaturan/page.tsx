@@ -117,52 +117,123 @@ export default function SettingsPage() {
     }
   };
 
-  // 4. Handle banner file upload
+  // Client-side image optimization to prevent payload issues and ensure fast upload
+  const optimizeImageForUpload = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/') || file.size < 1.2 * 1024 * 1024) {
+      return file;
+    }
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          const maxWidth = 2560;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              resolve(new File([blob], file.name, { type: mime, lastModified: Date.now() }));
+            },
+            mime,
+            0.88
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // 4. Handle banner file upload with resilient Vercel fallback
   const handleUpload = async (file: File, target: 'landing' | 'dashboard') => {
     const isLanding = target === 'landing';
     if (isLanding) setUploadingLanding(true);
     else setUploadingDashboard(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('target', target);
+      // 1. Optimize image client-side if file is heavy
+      const readyFile = await optimizeImageForUpload(file);
 
-      const res = await fetch('/api/settings/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      let uploadedUrl = '';
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal mengunggah gambar banner.');
+      // 2. Try uploading via API route
+      try {
+        const formData = new FormData();
+        formData.append('file', readyFile);
+        formData.append('target', target);
+
+        const res = await fetch('/api/settings/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success && data.url) {
+          uploadedUrl = data.url;
+        }
+      } catch (apiErr) {
+        console.warn('API upload route threw an error, falling back to direct base64 encoding:', apiErr);
       }
 
-      const newLanding = isLanding ? data.url : bannerLanding;
-      const newDashboard = !isLanding ? data.url : bannerDashboard;
+      // 3. Resilient Fallback: If server API returned no URL (e.g. Vercel read-only filesystem limit),
+      // read directly as high-res Base64 Data URL in browser
+      if (!uploadedUrl) {
+        uploadedUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(readyFile);
+        });
+      }
+
+      const newLanding = isLanding ? uploadedUrl : bannerLanding;
+      const newDashboard = !isLanding ? uploadedUrl : bannerDashboard;
 
       if (isLanding) {
-        setBannerLanding(data.url);
+        setBannerLanding(uploadedUrl);
       } else {
-        setBannerDashboard(data.url);
+        setBannerDashboard(uploadedUrl);
       }
 
-      // Automatically persist to DB immediately!
-      try {
-        await fetch('/api/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bannerLanding: newLanding,
-            bannerDashboard: newDashboard,
-            categories,
-          }),
-        });
-        showToast('success', `Banner ${isLanding ? 'Landing Page' : 'Dashboard'} berhasil diunggah dan langsung aktif diterapkan!`);
-      } catch (saveErr) {
-        showToast('success', `Banner ${isLanding ? 'Landing Page' : 'Dashboard'} berhasil diunggah! Klik Simpan Perubahan.`);
+      // 4. Persist immediately to Supabase PostgreSQL database!
+      const saveRes = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bannerLanding: newLanding,
+          bannerDashboard: newDashboard,
+          categories,
+        }),
+      });
+
+      const saveData = await saveRes.json();
+      if (!saveRes.ok || !saveData.success) {
+        throw new Error(saveData.message || 'Gagal menyimpan perubahan ke database.');
       }
+
+      showToast('success', `Banner ${isLanding ? 'Landing Page' : 'Dashboard'} berhasil diunggah dan langsung aktif diterapkan!`);
     } catch (err: any) {
+      console.error('Upload error:', err);
       showToast('error', err.message || 'Terjadi kesalahan saat upload banner.');
     } finally {
       if (isLanding) setUploadingLanding(false);
