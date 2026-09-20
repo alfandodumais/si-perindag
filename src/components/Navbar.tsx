@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Building2,
   Menu,
   X,
   FileText,
@@ -45,8 +44,12 @@ export default function Navbar() {
           {/* Brand / Logo & Agency Identity */}
           <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-blue-600 to-amber-400 p-[1.5px] shadow-md shadow-sky-950/60 group-hover:scale-105 transition-transform duration-200 shrink-0">
-              <div className="w-full h-full bg-[#08192c] rounded-[10px] flex items-center justify-center text-white">
-                <Building2 className="w-5 h-5 text-sky-400 group-hover:text-amber-300 transition-colors" />
+              <div className="w-full h-full bg-[#08192c] rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
+                <img
+                  src="/logo-sipikem-icon.png"
+                  alt="Logo SIPIKEM SULUT"
+                  className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-110 transition-transform duration-200"
+                />
               </div>
             </div>
             <div className="flex flex-col">

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Mail, Phone, MapPin, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
+import { Mail, Phone, MapPin, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
 import { DISPERINDAG_SULUT } from '@/lib/constants';
 
 export default function Footer() {
@@ -24,8 +24,12 @@ export default function Footer() {
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-blue-600 to-amber-500 p-0.5 shadow-md">
-                <div className="w-full h-full bg-[#0c233c] rounded-[10px] flex items-center justify-center text-white">
-                  <Building2 className="w-5 h-5 text-sky-400" />
+                <div className="w-full h-full bg-[#0c233c] rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
+                  <img
+                    src="/logo-sipikem-icon.png"
+                    alt="Logo SIPIKEM SULUT"
+                    className="w-full h-full object-contain filter drop-shadow-sm"
+                  />
                 </div>
               </div>
               <div>

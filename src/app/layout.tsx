@@ -6,6 +6,17 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "SIPIKEM SULUT | Sistem Informasi Pembinaan IKM Sulawesi Utara",
   description: "Portal Resmi Dinas Perindustrian dan Perdagangan Provinsi Sulawesi Utara untuk Pendataan 8 Kluster, Standardisasi Sertifikasi, dan Pembinaan IKM di 15 Kabupaten/Kota.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo-sipikem-icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

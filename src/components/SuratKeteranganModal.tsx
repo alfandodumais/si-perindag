@@ -68,8 +68,13 @@ export default function SuratKeteranganModal({
         <div className="p-8 sm:p-12 overflow-y-auto flex-1 bg-white" id="printable-certificate">
           
           {/* Kop Surat Resmi Disperindag Sulut */}
-          <div className="border-b-4 border-double border-slate-900 pb-5 text-center relative">
-            <div className="inline-block mb-1">
+          <div className="border-b-4 border-double border-slate-900 pb-5 text-center relative flex items-center justify-center gap-5">
+            <img 
+              src="/logo-sipikem-icon.png" 
+              alt="Logo SIPIKEM SULUT" 
+              className="w-16 h-16 object-contain shrink-0" 
+            />
+            <div className="inline-block mb-1 text-center">
               <span className="text-xs font-bold tracking-widest uppercase text-slate-600">
                 Pemerintah Provinsi Sulawesi Utara
               </span>

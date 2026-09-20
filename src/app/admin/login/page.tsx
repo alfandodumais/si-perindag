@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Building2, Lock, User, ShieldCheck, AlertCircle, ArrowLeft, KeyRound, Crown } from 'lucide-react';
+import { Lock, User, ShieldCheck, AlertCircle, ArrowLeft, KeyRound, Crown } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -58,19 +58,25 @@ export default function AdminLoginPage() {
         
         {/* Logo and Headings */}
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center text-white mx-auto shadow-xl shadow-emerald-900/40 border border-emerald-400/20">
-            <Building2 className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-blue-600 to-amber-400 p-0.5 flex items-center justify-center text-white mx-auto shadow-xl shadow-sky-950/50">
+            <div className="w-full h-full bg-[#08192c] rounded-[14px] p-2 flex items-center justify-center overflow-hidden">
+              <img
+                src="/logo-sipikem-icon.png"
+                alt="Logo SIPIKEM SULUT"
+                className="w-full h-full object-contain filter drop-shadow-sm"
+              />
+            </div>
           </div>
           
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-              <ShieldCheck className="w-3.5 h-3.5" /> Backoffice System
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold uppercase tracking-wider mb-2">
+              <ShieldCheck className="w-3.5 h-3.5" /> Backoffice SIPIKEM SULUT
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Portal Petugas Dinas
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Verifikasi & Validasi Data Pedagang / UMKM
+              Verifikasi &amp; Pembinaan IKM Sulawesi Utara
             </p>
           </div>
         </div>
