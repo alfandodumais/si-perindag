@@ -24,11 +24,11 @@ export default function Footer() {
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 via-blue-600 to-amber-500 p-0.5 shadow-md">
-                <div className="w-full h-full bg-[#0c233c] rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
+                <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center p-1 overflow-hidden shadow-inner">
                   <img
                     src="/logo-sipikem-icon.png"
                     alt="Logo SIPIKEM SULUT"
-                    className="w-full h-full object-contain filter drop-shadow-sm"
+                    className="w-full h-full object-contain filter drop-shadow-xs"
                   />
                 </div>
               </div>

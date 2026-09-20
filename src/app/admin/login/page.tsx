@@ -59,11 +59,11 @@ export default function AdminLoginPage() {
         {/* Logo and Headings */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-blue-600 to-amber-400 p-0.5 flex items-center justify-center text-white mx-auto shadow-xl shadow-sky-950/50">
-            <div className="w-full h-full bg-[#08192c] rounded-[14px] p-2 flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full bg-white rounded-[14px] p-2 flex items-center justify-center overflow-hidden shadow-inner">
               <img
                 src="/logo-sipikem-icon.png"
                 alt="Logo SIPIKEM SULUT"
-                className="w-full h-full object-contain filter drop-shadow-sm"
+                className="w-full h-full object-contain"
               />
             </div>
           </div>

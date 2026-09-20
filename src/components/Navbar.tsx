@@ -44,11 +44,11 @@ export default function Navbar() {
           {/* Brand / Logo & Agency Identity */}
           <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-blue-600 to-amber-400 p-[1.5px] shadow-md shadow-sky-950/60 group-hover:scale-105 transition-transform duration-200 shrink-0">
-              <div className="w-full h-full bg-[#08192c] rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
+              <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center p-1 overflow-hidden shadow-inner">
                 <img
                   src="/logo-sipikem-icon.png"
                   alt="Logo SIPIKEM SULUT"
-                  className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-110 transition-transform duration-200"
+                  className="w-full h-full object-contain filter drop-shadow-xs group-hover:scale-110 transition-transform duration-200"
                 />
               </div>
             </div>

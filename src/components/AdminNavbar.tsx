@@ -68,7 +68,7 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
           {/* Logo Brand */}
           <div className="flex items-center gap-6">
             <Link href="/admin/dashboard" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#0c233c] border border-sky-600/40 flex items-center justify-center p-1 shadow-md shadow-sky-950/50 overflow-hidden">
+              <div className="w-9 h-9 rounded-xl bg-white border border-sky-600/40 flex items-center justify-center p-1 shadow-md shadow-sky-950/50 overflow-hidden">
                 <img src="/logo-sipikem-icon.png" alt="Logo SIPIKEM SULUT" className="w-full h-full object-contain" />
               </div>
               <div>
