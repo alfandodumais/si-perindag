@@ -72,16 +72,16 @@ export default async function HomePage() {
     <div className="space-y-16 pb-20">
       
       {/* Hero Section with Calibrated Fixed Proportions on Laptop/Tab and Fluid Layout on Mobile */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0c233c] via-[#103459] to-[#081a2e] text-white pt-14 pb-20 sm:pt-16 sm:pb-24 md:py-0 md:h-[500px] lg:h-[560px] xl:h-[620px] md:flex md:items-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0c233c] via-[#103459] to-[#081a2e] text-white pt-14 pb-20 sm:pt-16 sm:pb-24 md:py-0 md:h-[460px] lg:h-[500px] xl:h-[560px] 2xl:h-[620px] md:flex md:items-center">
         
-        {/* Panoramic Banner Background: anchors right on tablet/laptop to preserve Disperindag logo & products */}
+        {/* Panoramic Banner Background: anchors right on tablet/laptop so Disperindag logo and products are never cropped */}
         <div 
-          className="absolute inset-0 bg-cover bg-center md:bg-[center_right] lg:bg-center bg-no-repeat opacity-60 md:opacity-85 pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 bg-cover bg-center md:bg-right 2xl:bg-center bg-no-repeat opacity-60 md:opacity-85 pointer-events-none transition-opacity duration-300"
           style={{ backgroundImage: `url('${appSettings.bannerLanding || '/banner.png'}')` }}
         />
 
         {/* Desktop & Tablet Vignette Gradient: gives dark contrast behind text while keeping right side vibrant */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0c233c]/90 via-[#0c233c]/55 to-transparent pointer-events-none hidden md:block" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0c233c]/90 via-[#0c233c]/50 to-transparent pointer-events-none hidden md:block" />
         
         {/* Mobile Uniform Dimmer for text legibility */}
         <div className="absolute inset-0 bg-[#0c233c]/45 pointer-events-none md:hidden" />
