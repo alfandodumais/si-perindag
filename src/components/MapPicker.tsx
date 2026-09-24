@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { MapPin, Navigation, Search, Check } from 'lucide-react';
+import { MapPin, Navigation, Search, Check, AlertTriangle, X } from 'lucide-react';
 
 interface MapPickerProps {
   latitude: number;
@@ -16,6 +16,12 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [geoLocating, setGeoLocating] = useState(false);
+  const [mapNotice, setMapNotice] = useState<{ text: string; type: 'error' | 'info' } | null>(null);
+
+  const showNotice = (text: string, type: 'error' | 'info' = 'error') => {
+    setMapNotice({ text, type });
+    setTimeout(() => setMapNotice(null), 5000);
+  };
 
   // Initialize Map
   useEffect(() => {
@@ -114,7 +120,7 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
   // Geolocation handler (Get Current Device Location)
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Browser Anda tidak mendukung deteksi lokasi otomatis.');
+      showNotice('Browser Anda tidak mendukung deteksi lokasi otomatis.');
       return;
     }
     setGeoLocating(true);
@@ -131,7 +137,7 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
       (err) => {
         setGeoLocating(false);
         console.warn('Geolocation error:', err);
-        alert('Tidak dapat mendeteksi lokasi saat ini. Pastikan izin lokasi diizinkan pada browser.');
+        showNotice('Tidak dapat mendeteksi lokasi saat ini. Pastikan izin lokasi diizinkan pada browser.');
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -157,11 +163,11 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
           mapInstanceRef.current.setView([lat, lng], 16);
         }
       } else {
-        alert('Alamat atau nama lokasi tidak ditemukan. Coba gunakan kata kunci yang lebih spesifik.');
+        showNotice('Alamat atau nama lokasi tidak ditemukan. Coba gunakan kata kunci yang lebih spesifik.');
       }
     } catch (error) {
       console.error('Nominatim search error:', error);
-      alert('Gagal melakukan pencarian alamat.');
+      showNotice('Gagal melakukan pencarian alamat.');
     } finally {
       setSearching(false);
     }
@@ -169,6 +175,29 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
 
   return (
     <div className="space-y-3">
+      {/* Map Error/Info Notification Banner */}
+      {mapNotice && (
+        <div
+          className={`p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all ${
+            mapNotice.type === 'error'
+              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+              : 'bg-sky-50 text-sky-700 border border-sky-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{mapNotice.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMapNotice(null)}
+            className="p-1 hover:bg-black/5 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Controls: Search and My Location */}
       <div className="flex flex-col sm:flex-row gap-2">
         <form onSubmit={handleSearchAddress} className="relative flex-1 flex">

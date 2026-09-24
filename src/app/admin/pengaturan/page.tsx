@@ -33,6 +33,7 @@ import {
   OrgMember
 } from '@/lib/settings';
 import AdminOrgStructureTab from '@/components/AdminOrgStructureTab';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function SettingsPage() {
   return (
@@ -90,6 +91,18 @@ function SettingsContent() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Confirm / Alert Modal State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode | string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'info' | 'success';
+    hideCancel?: boolean;
+    onConfirm?: () => void;
+  } | null>(null);
+
   // 1. Check user session & authorize Superadmin
   useEffect(() => {
     fetch('/api/auth/me')
@@ -100,8 +113,17 @@ function SettingsContent() {
           return;
         }
         if (data.user.role !== 'SUPERADMIN') {
-          alert('Akses ditolak! Modul Pengaturan hanya dapat diakses oleh Superadmin.');
-          router.push('/admin/dashboard');
+          setConfirmDialog({
+            isOpen: true,
+            title: 'Akses Ditolak',
+            message: 'Modul Pengaturan Sistem hanya dapat diakses oleh akun Superadmin.',
+            confirmText: 'Kembali ke Dashboard',
+            variant: 'danger',
+            hideCancel: true,
+            onConfirm: () => {
+              router.push('/admin/dashboard');
+            },
+          });
           return;
         }
         setCurrentUser(data.user);
@@ -394,24 +416,59 @@ function SettingsContent() {
     }
 
     if (count > 0) {
-      const confirmDelete = window.confirm(
-        `Peringatan: Kategori "${catName}" saat ini digunakan oleh ${count} data IKM di database.\n\nApakah Anda yakin ingin tetap menghapusnya dari daftar pilihan?`
-      );
-      if (!confirmDelete) return;
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Kategori Sedang Digunakan!',
+        message: (
+          <div className="space-y-3 text-left">
+            <p className="text-slate-600">
+              Kategori <strong className="text-slate-900 font-bold">&quot;{catName}&quot;</strong> saat ini tercatat digunakan oleh <strong className="text-rose-600 font-bold">{count} data IKM</strong> terdaftar.
+            </p>
+            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-3 rounded-2xl">
+              <strong>Catatan:</strong> Menghapus kategori ini tidak akan menghapus data IKM di database, tetapi kategorinya akan menjadi tidak terdefinisi.
+            </div>
+            <p className="text-xs text-slate-700 font-semibold">
+              Apakah Anda yakin ingin tetap menghapus kategori ini?
+            </p>
+          </div>
+        ),
+        confirmText: 'Tetap Hapus Kategori',
+        variant: 'danger',
+        onConfirm: () => {
+          setCategories(categories.filter((_, i) => i !== index));
+          showToast('success', `Kategori "${catName}" dihapus.`);
+          setConfirmDialog(null);
+        },
+      });
     } else {
-      const confirmDelete = window.confirm(`Hapus kategori "${catName}" dari daftar pilihan?`);
-      if (!confirmDelete) return;
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Hapus Kategori Usaha?',
+        message: `Apakah Anda yakin ingin menghapus kategori "${catName}" dari daftar pilihan sistem? Tindakan ini akan diterapkan saat Anda menekan tombol "Simpan Kategori".`,
+        confirmText: 'Ya, Hapus Kategori',
+        variant: 'danger',
+        onConfirm: () => {
+          setCategories(categories.filter((_, i) => i !== index));
+          showToast('success', `Kategori "${catName}" dihapus.`);
+          setConfirmDialog(null);
+        },
+      });
     }
-
-    setCategories(categories.filter((_, i) => i !== index));
-    showToast('success', `Kategori "${catName}" dihapus.`);
   };
 
   const handleResetCategories = () => {
-    if (window.confirm('Kembalikan daftar kategori ke 8 kategori awal bawaan database?')) {
-      setCategories(DEFAULT_CATEGORIES);
-      showToast('success', 'Daftar kategori di-reset ke bawaan awal. Klik Simpan untuk menerapkan.');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Daftar Kategori?',
+      message: 'Apakah Anda yakin ingin mengembalikan daftar kategori ke 8 kategori awal bawaan database? Penyesuaian kustom yang belum disimpan akan digantikan.',
+      confirmText: 'Ya, Reset Kategori',
+      variant: 'warning',
+      onConfirm: () => {
+        setCategories(DEFAULT_CATEGORIES);
+        showToast('success', 'Daftar kategori di-reset ke bawaan awal. Klik Simpan Kategori untuk menerapkan.');
+        setConfirmDialog(null);
+      },
+    });
   };
 
   return (
@@ -901,6 +958,21 @@ function SettingsContent() {
             onSaveAll={handleSaveSettings}
             saving={saving}
             showToast={showToast}
+          />
+        )}
+
+        {/* Custom Confirmation / Alert Modal */}
+        {confirmDialog && (
+          <ConfirmModal
+            isOpen={confirmDialog.isOpen}
+            onClose={() => setConfirmDialog(null)}
+            onConfirm={confirmDialog.onConfirm}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText={confirmDialog.confirmText}
+            cancelText={confirmDialog.cancelText}
+            variant={confirmDialog.variant}
+            hideCancel={confirmDialog.hideCancel}
           />
         )}
 

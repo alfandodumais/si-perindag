@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import SuratKeteranganModal from '@/components/SuratKeteranganModal';
+import ConfirmModal from '@/components/ConfirmModal';
 import { 
   KABUPATEN_KOTA_SULUT, 
   KATEGORI_IKM_SULUT, 
@@ -98,6 +99,13 @@ function DataIkmContent() {
     message: string;
     actionType?: 'CREATE' | 'UPDATE' | 'DELETE';
   } | null>(null);
+
+  // Delete Confirmation Modal State
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    merchant: any | null;
+  } | null>(null);
+  const [submittingDelete, setSubmittingDelete] = useState(false);
 
   // Form State for 8 Clusters (DATA IKM.pdf)
   const [formData, setFormData] = useState({
@@ -286,11 +294,21 @@ function DataIkmContent() {
       if (data.success && data.url) {
         setFormData((prev) => ({ ...prev, businessImage: data.url }));
       } else {
-        alert(data.message || 'Gagal mengunggah foto fisik');
+        setFeedbackModal({
+          isOpen: true,
+          type: 'ERROR',
+          title: 'Gagal Unggah Foto',
+          message: data.message || 'Gagal mengunggah foto fisik produk / tempat usaha.',
+        });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Terjadi kesalahan saat mengunggah foto');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'ERROR',
+        title: 'Kesalahan Sistem',
+        message: 'Terjadi kesalahan saat mengunggah foto fisik ke server.',
+      });
     } finally {
       setUploadingImage(false);
     }
@@ -448,11 +466,19 @@ function DataIkmContent() {
     }
   };
 
-  // Delete IKM
-  const handleDelete = async (m: any) => {
-    if (!confirm(`Konfirmasi Penghapusan:\nApakah Anda yakin ingin menghapus data IKM "${m.businessName}"?`)) {
-      return;
-    }
+  // Open Delete Confirmation Modal
+  const handleDeleteRequest = (m: any) => {
+    setDeleteDialog({
+      isOpen: true,
+      merchant: m,
+    });
+  };
+
+  // Confirm and Execute Delete IKM
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog?.merchant) return;
+    const m = deleteDialog.merchant;
+    setSubmittingDelete(true);
 
     try {
       const res = await fetch(`/api/merchants/${m.id}`, { method: 'DELETE' });
@@ -461,16 +487,24 @@ function DataIkmContent() {
         throw new Error(data.message || 'Gagal menghapus data');
       }
 
+      setDeleteDialog(null);
       fetchData();
       setFeedbackModal({
         isOpen: true,
         type: 'SUCCESS',
         title: 'Data Berhasil Dihapus',
-        message: `Data IKM "${m.businessName}" telah dihapus secara permanen dari basis data.`,
+        message: `Data IKM "${m.businessName}" telah dihapus secara permanen dari basis data SIPIKEM SULUT.`,
         actionType: 'DELETE',
       });
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan sistem.');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'ERROR',
+        title: 'Gagal Menghapus Data',
+        message: err.message || 'Terjadi kesalahan sistem saat menghapus data IKM.',
+      });
+    } finally {
+      setSubmittingDelete(false);
     }
   };
 
@@ -509,7 +543,12 @@ function DataIkmContent() {
         actionType: 'UPDATE',
       });
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan sistem saat memproses verifikasi.');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'ERROR',
+        title: 'Gagal Memproses Verifikasi',
+        message: err.message || 'Terjadi kesalahan sistem saat memproses verifikasi.',
+      });
     } finally {
       setSubmittingVerify(false);
     }
@@ -518,7 +557,12 @@ function DataIkmContent() {
   // Export to CSV
   const handleExportCSV = () => {
     if (merchants.length === 0) {
-      alert('Tidak ada data untuk diekspor.');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'ERROR',
+        title: 'Data Masih Kosong',
+        message: 'Tidak ada data IKM yang dapat diekspor ke file CSV saat ini.',
+      });
       return;
     }
 
@@ -1076,7 +1120,7 @@ function DataIkmContent() {
 
                           {/* Quick Delete */}
                           <button
-                            onClick={() => handleDelete(m)}
+                            onClick={() => handleDeleteRequest(m)}
                             title="Hapus Data IKM"
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                           >
@@ -2139,6 +2183,29 @@ function DataIkmContent() {
               setShowCertificateModal(false);
               setCertificateMerchant(null);
             }}
+          />
+        )}
+
+        {/* DELETE CONFIRMATION MODAL */}
+        {deleteDialog && deleteDialog.merchant && (
+          <ConfirmModal
+            isOpen={deleteDialog.isOpen}
+            onClose={() => !submittingDelete && setDeleteDialog(null)}
+            onConfirm={handleConfirmDelete}
+            title="Hapus Data IKM?"
+            message={
+              <div className="space-y-3 text-left">
+                <p className="text-slate-600">
+                  Apakah Anda yakin ingin menghapus data IKM <strong className="text-slate-900 font-bold">&quot;{deleteDialog.merchant.businessName}&quot;</strong> milik <strong className="text-slate-900 font-bold">{deleteDialog.merchant.ownerName}</strong>?
+                </p>
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-2xl">
+                  <strong>Peringatan:</strong> Seluruh riwayat verifikasi, legalitas, dan berkas foto profil usaha terkait akan dihapus secara permanen dari server database SIPIKEM SULUT.
+                </div>
+              </div>
+            }
+            confirmText="Ya, Hapus Data IKM"
+            variant="danger"
+            isLoading={submittingDelete}
           />
         )}
 

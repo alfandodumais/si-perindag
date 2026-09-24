@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import SuratKeteranganModal from '@/components/SuratKeteranganModal';
+import ConfirmModal from '@/components/ConfirmModal';
 import { KABUPATEN_KOTA_SULUT } from '@/lib/constants';
 import { 
   FileCheck2, 
@@ -68,6 +69,19 @@ function VerifikasiContent() {
     businessName: string;
     registrationNo: string;
     merchantData: any;
+  } | null>(null);
+
+  // Superadmin Confirmation Modal State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode | string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'info' | 'success';
+    hideCancel?: boolean;
+    isLoading?: boolean;
+    onConfirm?: () => void | Promise<void>;
   } | null>(null);
 
   // Fetch session
@@ -179,37 +193,83 @@ function VerifikasiContent() {
   };
 
   // Delete Merchant (Superadmin only)
-  const handleDeleteMerchant = async (merchantId: string, name: string) => {
+  const handleDeleteMerchant = (merchantId: string, name: string) => {
     if (userSession?.role !== 'SUPERADMIN') {
-      alert('Hanya Superadmin yang memiliki izin untuk menghapus data pendaftaran.');
-      return;
-    }
-
-    if (!confirm(`Konfirmasi Tindakan Superadmin:\nApakah Anda yakin ingin menghapus data permohonan "${name}" secara permanen?`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/merchants/${merchantId}`, {
-        method: 'DELETE',
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Izin Ditolak',
+        message: 'Hanya akun dengan wewenang Superadmin yang memiliki izin untuk menghapus data pendaftaran.',
+        confirmText: 'Tutup',
+        variant: 'danger',
+        hideCancel: true,
+        onConfirm: () => setConfirmDialog(null),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal menghapus permohonan');
-      }
-
-      alert(data.message);
-      setSelectedMerchant(null);
-      fetchMerchants();
-    } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan sistem saat menghapus data');
+      return;
     }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Permohonan IKM?',
+      message: (
+        <div className="space-y-3 text-left">
+          <p className="text-slate-600">
+            Apakah Anda yakin ingin menghapus data permohonan pendaftaran <strong className="text-slate-900 font-bold">&quot;{name}&quot;</strong>?
+          </p>
+          <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-2xl">
+            <strong>Peringatan Superadmin:</strong> Tindakan ini bersifat permanen. Seluruh berkas pendaftaran dan log verifikasi terkait akan dihapus dari server database.
+          </div>
+        </div>
+      ),
+      confirmText: 'Ya, Hapus Permanen',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/merchants/${merchantId}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Gagal menghapus permohonan');
+          }
+
+          setSelectedMerchant(null);
+          fetchMerchants();
+          setConfirmDialog({
+            isOpen: true,
+            title: 'Berhasil Dihapus',
+            message: data.message || 'Data permohonan berhasil dihapus secara permanen.',
+            confirmText: 'Selesai',
+            variant: 'success',
+            hideCancel: true,
+            onConfirm: () => setConfirmDialog(null),
+          });
+        } catch (err: any) {
+          setConfirmDialog({
+            isOpen: true,
+            title: 'Gagal Menghapus Data',
+            message: err.message || 'Terjadi kesalahan sistem saat menghapus data permohonan.',
+            confirmText: 'Tutup',
+            variant: 'danger',
+            hideCancel: true,
+            onConfirm: () => setConfirmDialog(null),
+          });
+        }
+      },
+    });
   };
 
   // Export to CSV
   const handleExportCSV = () => {
     if (merchants.length === 0) {
-      alert('Tidak ada data untuk diexport.');
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Data Masih Kosong',
+        message: 'Tidak ada data permohonan IKM yang dapat diekspor ke format CSV saat ini.',
+        confirmText: 'Mengerti',
+        variant: 'info',
+        hideCancel: true,
+        onConfirm: () => setConfirmDialog(null),
+      });
       return;
     }
 
@@ -829,6 +889,22 @@ function VerifikasiContent() {
               setShowCertificateModal(false);
               setCertificateMerchant(null);
             }}
+          />
+        )}
+
+        {/* Custom Confirmation / Alert Modal */}
+        {confirmDialog && (
+          <ConfirmModal
+            isOpen={confirmDialog.isOpen}
+            onClose={() => setConfirmDialog(null)}
+            onConfirm={confirmDialog.onConfirm}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText={confirmDialog.confirmText}
+            cancelText={confirmDialog.cancelText}
+            variant={confirmDialog.variant}
+            hideCancel={confirmDialog.hideCancel}
+            isLoading={confirmDialog.isLoading}
           />
         )}
 

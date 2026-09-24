@@ -25,6 +25,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { OrgMember, DEFAULT_ORG_STRUCTURE } from '@/lib/settings';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface AdminOrgStructureTabProps {
   members: OrgMember[];
@@ -47,6 +48,16 @@ export default function AdminOrgStructureTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Confirm Modal State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<OrgMember>({
@@ -160,11 +171,19 @@ export default function AdminOrgStructureTab({
       showToast('error', 'Minimal harus ada 1 entitas struktur.');
       return;
     }
-    if (window.confirm(`Apakah Anda yakin ingin menghapus "${title}" dari bagan struktur?`)) {
-      const updated = members.filter((m) => m.id !== id);
-      onChangeMembers(updated);
-      showToast('success', `"${title}" dihapus. Klik Simpan Perubahan.`);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Dari Bagan Struktur?',
+      message: `Apakah Anda yakin ingin menghapus "${title}" dari bagan struktur organisasi? Tindakan ini akan diterapkan saat Anda menekan tombol "Simpan Perubahan".`,
+      confirmText: 'Ya, Hapus Pejabat',
+      variant: 'danger',
+      onConfirm: () => {
+        const updated = members.filter((m) => m.id !== id);
+        onChangeMembers(updated);
+        showToast('success', `"${title}" dihapus. Klik Simpan Perubahan.`);
+        setConfirmDialog(null);
+      },
+    });
   };
 
   // Move order up / down
@@ -192,14 +211,18 @@ export default function AdminOrgStructureTab({
 
   // Reset to default Sulut structure
   const handleResetToDefault = () => {
-    if (
-      window.confirm(
-        'Perhatian: Apakah Anda yakin ingin mengatur ulang bagan struktur ke struktur bawaan Disperindag Sulawesi Utara (14 pejabat sesuai SK)? Perubahan yang belum disimpan akan digantikan.'
-      )
-    ) {
-      onChangeMembers(DEFAULT_ORG_STRUCTURE);
-      showToast('success', 'Struktur dikembalikan ke susunan resmi Disperindag Sulut.');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Struktur ke Standar SK?',
+      message: 'Perhatian: Seluruh susunan bagan dan foto pejabat yang telah diubah akan dikembalikan ke struktur standar resmi Disperindag Sulawesi Utara (14 pejabat sesuai SK). Perubahan yang belum disimpan akan digantikan.',
+      confirmText: 'Ya, Reset ke Standar SK',
+      variant: 'warning',
+      onConfirm: () => {
+        onChangeMembers(DEFAULT_ORG_STRUCTURE);
+        showToast('success', 'Struktur dikembalikan ke susunan resmi Disperindag Sulut.');
+        setConfirmDialog(null);
+      },
+    });
   };
 
   // Filtered members for display
@@ -685,6 +708,19 @@ export default function AdminOrgStructureTab({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Custom Professional Confirmation Modal */}
+      {confirmDialog && (
+        <ConfirmModal
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(null)}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          variant={confirmDialog.variant}
+        />
       )}
 
     </div>

@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
+import ConfirmModal from '@/components/ConfirmModal';
 import { Laptop, MessageSquare, ShieldCheck, CheckCircle2, Clock, HelpCircle, PhoneCall } from 'lucide-react';
 
 export default function KlinikDigitalPage() {
   const [userSession, setUserSession] = useState<any>(null);
+  const [selectedServiceModal, setSelectedServiceModal] = useState<any | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -76,7 +78,8 @@ export default function KlinikDigitalPage() {
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Fasilitator: <b className="text-slate-700">{s.consultant}</b></span>
                 <button
-                  onClick={() => alert(`Layanan ${s.title} tersedia pada jam kerja kantor Disperindag Prov. Sulut. Telp: (0431) 851103.`)}
+                  type="button"
+                  onClick={() => setSelectedServiceModal(s)}
                   className="font-bold text-sky-700 hover:text-sky-900 hover:underline"
                 >
                   Hubungi Konsultan &rarr;
@@ -85,6 +88,35 @@ export default function KlinikDigitalPage() {
             </div>
           ))}
         </div>
+
+        {/* Modal Info Konsultan */}
+        {selectedServiceModal && (
+          <ConfirmModal
+            isOpen={!!selectedServiceModal}
+            onClose={() => setSelectedServiceModal(null)}
+            title={selectedServiceModal.title}
+            message={
+              <div className="space-y-3 text-left">
+                <p className="text-slate-600 leading-relaxed">
+                  {selectedServiceModal.desc}
+                </p>
+                <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-700">
+                  <div className="font-bold text-sky-900 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-sky-700" />
+                    Jadwal Layanan Konsultasi:
+                  </div>
+                  <p>Senin – Jumat, pukul 08.00 – 16.00 WITA (Hari Kerja)</p>
+                  <p>Kantor Dinas Perindustrian dan Perdagangan Daerah Provinsi Sulawesi Utara</p>
+                  <p className="font-semibold text-sky-800">Telepon / Fax: (0431) 851103</p>
+                </div>
+              </div>
+            }
+            confirmText="Tutup"
+            variant="info"
+            hideCancel={true}
+            onConfirm={() => setSelectedServiceModal(null)}
+          />
+        )}
 
       </main>
     </AdminSidebarLayout>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
+import ConfirmModal from '@/components/ConfirmModal';
 import { 
   Users, 
   UserPlus, 
@@ -64,7 +65,6 @@ function UsersContent() {
         }
         if (data.user.role !== 'SUPERADMIN') {
           // Denied access for non-superadmin
-          alert('Akses Ditolak. Halaman ini hanya untuk Superadmin.');
           router.push('/admin/dashboard');
           return;
         }
@@ -218,7 +218,7 @@ function UsersContent() {
       fetchUsers();
       showToast(data.message);
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan saat menghapus');
+      showToast(err.message || 'Terjadi kesalahan saat menghapus');
     } finally {
       setSubmitting(false);
     }
@@ -771,38 +771,25 @@ function UsersContent() {
 
         {/* Modal: Hapus Petugas */}
         {showDeleteModal && selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden my-8 p-6 sm:p-8 space-y-5 animate-fadeIn text-center">
-              <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-                <Trash2 className="w-7 h-7" />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Hapus Akun Petugas?</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus akun <strong className="text-slate-800">{selectedUser.name}</strong> (@{selectedUser.username})? Tindakan ini tidak dapat dibatalkan.
+          <ConfirmModal
+            isOpen={showDeleteModal}
+            onClose={() => !submitting && setShowDeleteModal(false)}
+            onConfirm={handleDeleteSubmit}
+            title="Hapus Akun Petugas?"
+            message={
+              <div className="space-y-2 text-left">
+                <p className="text-slate-600">
+                  Apakah Anda yakin ingin menghapus akun <strong className="text-slate-900 font-bold">{selectedUser.name}</strong> (@{selectedUser.username})?
                 </p>
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                  <strong>Peringatan:</strong> Petugas ini tidak akan dapat login kembali ke dashboard SIPIKEM. Tindakan ini tidak dapat dibatalkan.
+                </div>
               </div>
-
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={handleDeleteSubmit}
-                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold rounded-xl shadow transition-colors disabled:opacity-50"
-                >
-                  {submitting ? 'Menghapus...' : 'Ya, Hapus Akun'}
-                </button>
-              </div>
-            </div>
-          </div>
+            }
+            confirmText="Ya, Hapus Akun"
+            variant="danger"
+            isLoading={submitting}
+          />
         )}
 
       </main>

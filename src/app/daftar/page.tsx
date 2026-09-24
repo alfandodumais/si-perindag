@@ -25,6 +25,7 @@ import {
   Award
 } from 'lucide-react';
 import { KABUPATEN_KOTA_SULUT, KATEGORI_IKM_SULUT, SULUT_CENTER } from '@/lib/constants';
+import ConfirmModal from '@/components/ConfirmModal';
 
 // Dynamic import for Leaflet map component to prevent SSR issues
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
@@ -88,6 +89,13 @@ export default function DaftarPage() {
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>(KATEGORI_IKM_SULUT as unknown as string[]);
 
+  // Dialog Notification State
+  const [alertModal, setAlertModal] = useState<{
+    title: string;
+    message: string;
+    variant?: 'warning' | 'danger' | 'info';
+  } | null>(null);
+
   useEffect(() => {
     fetch('/api/categories')
       .then((res) => res.json())
@@ -118,13 +126,21 @@ export default function DaftarPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file maksimal adalah 5 MB');
+      setAlertModal({
+        title: 'Ukuran Berkas Terlalu Besar',
+        message: 'Ukuran file foto maksimal adalah 5 MB. Silakan kompres atau pilih berkas foto dengan resolusi yang lebih kecil.',
+        variant: 'warning',
+      });
       return;
     }
 
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
-      alert('Format file harus berupa gambar (JPG, PNG, atau WEBP)');
+      setAlertModal({
+        title: 'Format Berkas Tidak Didukung',
+        message: 'Format berkas harus berupa gambar dengan format JPG, JPEG, PNG, atau WEBP.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -150,7 +166,11 @@ export default function DaftarPage() {
       }));
     } catch (err: any) {
       console.error('Error uploading file:', err);
-      alert(err.message || 'Terjadi kesalahan saat menyimpan berkas foto fisik.');
+      setAlertModal({
+        title: 'Gagal Menyimpan Berkas',
+        message: err.message || 'Terjadi kesalahan sistem saat menyimpan berkas foto fisik.',
+        variant: 'danger',
+      });
     } finally {
       setUploadingField(null);
     }
@@ -685,8 +705,21 @@ export default function DaftarPage() {
               )}
             </button>
           </div>
-
         </form>
+      )}
+
+      {/* Modal Notifikasi Form */}
+      {alertModal && (
+        <ConfirmModal
+          isOpen={!!alertModal}
+          onClose={() => setAlertModal(null)}
+          title={alertModal.title}
+          message={alertModal.message}
+          confirmText="Mengerti"
+          variant={alertModal.variant || 'warning'}
+          hideCancel={true}
+          onConfirm={() => setAlertModal(null)}
+        />
       )}
     </div>
   );
