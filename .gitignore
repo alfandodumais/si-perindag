@@ -38,3 +38,7 @@ next-env.d.ts
 # SQLite local DB
 prisma/*.db
 prisma/*.db-journal
+
+# deployment archives
+*.tar.gz
+*.zip
