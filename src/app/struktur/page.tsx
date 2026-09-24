@@ -186,7 +186,7 @@ export default function PublicStrukturOrganisasiPage() {
                 <Network className="w-4 h-4 text-sky-400" />
                 <span className="font-extrabold text-white">Bagan Struktur Organisasi Resmi</span>
                 <span className="text-slate-500">•</span>
-                <span className="text-slate-400 text-[11px]">Geser ke samping jika menggunakan layar kecil</span>
+                <span className="text-slate-400 text-[11px]">Susunan hierarki resmi pejabat Disperindag Prov. Sulut</span>
               </div>
 
               <div className="flex items-center gap-3 text-[11px] text-slate-400 font-semibold">

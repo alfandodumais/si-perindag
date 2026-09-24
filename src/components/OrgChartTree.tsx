@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { OrgMember } from '@/lib/settings';
-import { Crown, ShieldCheck, Briefcase, Building2, User, ChevronDown } from 'lucide-react';
+import { Crown, ShieldCheck, Briefcase, Building2, User } from 'lucide-react';
 
 interface OrgChartTreeProps {
   members: OrgMember[];
@@ -80,7 +80,7 @@ export default function OrgChartTree({ members, onSelectMember }: OrgChartTreePr
       <div
         onClick={() => onSelectMember(member)}
         className={`group relative rounded-2xl ${style.bg} border ${style.border} ${style.ring} cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl text-center overflow-hidden flex flex-col justify-between ${
-          size === 'lg' ? 'w-80 min-h-[160px]' : size === 'md' ? 'w-64 min-h-[145px]' : 'w-56 min-h-[110px]'
+          size === 'lg' ? 'w-full max-w-[340px] min-h-[160px]' : size === 'md' ? 'w-full max-w-[270px] min-h-[145px]' : 'w-full max-w-[240px] min-h-[120px]'
         }`}
       >
         {/* Card Header Jabatan */}
@@ -132,116 +132,97 @@ export default function OrgChartTree({ members, onSelectMember }: OrgChartTreePr
   };
 
   return (
-    <div className="w-full overflow-x-auto py-8 px-4 no-scrollbar">
-      <div className="min-w-[1100px] flex flex-col items-center select-none">
-        
-        {/* ======================================================== */}
-        {/* LEVEL 1: KEPALA DINAS                                    */}
-        {/* ======================================================== */}
-        <div className="flex flex-col items-center relative z-10">
+    <div className="w-full py-6 px-2 sm:px-4 space-y-12">
+      
+      {/* ======================================================== */}
+      {/* TIER 1: PIMPINAN DINAS                                   */}
+      {/* ======================================================== */}
+      <div className="flex flex-col items-center text-center space-y-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider">
+          <Crown className="w-3.5 h-3.5" /> Pimpinan Tinggi Pratama (Eselon II.a)
+        </div>
+
+        <div className="flex justify-center w-full">
           {renderCard(kadis, 'gold', 'lg')}
+        </div>
+      </div>
 
-          {/* Stem downwards */}
-          <div className="w-0.5 h-12 bg-sky-400/60 mt-1" />
+      {/* ======================================================== */}
+      {/* TIER 2: SEKRETARIAT & SUB-BAGIAN                         */}
+      {/* ======================================================== */}
+      <div className="rounded-3xl bg-[#091b2e]/60 border border-sky-500/20 p-6 space-y-6">
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-[10px] font-extrabold uppercase tracking-wider">
+            Sekretariat & Sub-Bagian
+          </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* LEVEL 2: SEKRETARIAT & CABANG KASUBAG                    */}
-        {/* ======================================================== */}
-        <div className="w-full max-w-4xl relative flex flex-col items-center mb-8">
+        {/* Sekretaris Dinas */}
+        <div className="flex justify-center">
+          {renderCard(sekretaris, 'blue', 'md')}
+        </div>
+
+        {/* 3 Sub-units under Sekretaris */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 justify-items-center max-w-4xl mx-auto pt-2">
+          {renderCard(kasubagUmum, 'sky', 'sm')}
+          {renderCard(kasubagKeuangan, 'sky', 'sm')}
+          {renderCard(fungsionalSekretariat, 'slate', 'sm')}
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* TIER 3: 4 BIDANG URUSAN (ESELON III)                     */}
+      {/* ======================================================== */}
+      <div className="space-y-6">
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-[10px] font-extrabold uppercase tracking-wider">
+            Bidang-Bidang Urusan Teknis (Eselon III.a)
+          </div>
+        </div>
+
+        {/* 4 Bidang Columns Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 justify-items-center">
           
-          {/* Horizontal Connector to the right for Sekretaris */}
-          <div className="relative w-full flex justify-end pr-12">
-            
-            {/* SVG Elbow connecting Kadis vertical stem to Sekretaris */}
-            <div className="absolute left-1/2 -top-12 w-[220px] h-12 border-t-2 border-r-2 border-sky-400/60 rounded-tr-xl pointer-events-none" />
+          {/* Col 1: Bidang Perindustrian */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            {renderCard(kabidIndustri, 'blue', 'md')}
+            {renderCard(fungsionalIndustri, 'slate', 'md')}
+          </div>
 
-            <div className="flex flex-col items-center">
-              {renderCard(sekretaris, 'blue', 'md')}
+          {/* Col 2: Bidang Fasilitasi & Pengembangan IKM */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            {renderCard(kabidIkm, 'blue', 'md')}
+            {renderCard(fungsionalIkm, 'slate', 'md')}
+          </div>
 
-              {/* Stem down to Sub-sections */}
-              <div className="w-0.5 h-8 bg-sky-400/60" />
+          {/* Col 3: Bidang Perdagangan Luar Negeri */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            {renderCard(kabidDaglu, 'blue', 'md')}
+            {renderCard(fungsionalDaglu, 'slate', 'md')}
+          </div>
 
-              {/* Horizontal line across Sekretariat's 3 children */}
-              <div className="w-[520px] h-0.5 bg-sky-400/60 relative">
-                <div className="absolute left-0 top-0 w-0.5 h-6 bg-sky-400/60" />
-                <div className="absolute left-1/2 -translate-x-1/2 top-0 w-0.5 h-6 bg-sky-400/60" />
-                <div className="absolute right-0 top-0 w-0.5 h-6 bg-sky-400/60" />
-              </div>
-
-              {/* 3 Children under Sekretaris */}
-              <div className="flex items-start gap-4 mt-6">
-                {renderCard(kasubagUmum, 'sky', 'sm')}
-                {renderCard(kasubagKeuangan, 'sky', 'sm')}
-                {renderCard(fungsionalSekretariat, 'slate', 'sm')}
-              </div>
-            </div>
+          {/* Col 4: Bidang Perdagangan Dalam Negeri */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            {renderCard(kabidDagri, 'blue', 'md')}
+            {renderCard(fungsionalDagri, 'slate', 'md')}
           </div>
 
         </div>
+      </div>
 
-        {/* Divider / Stem down to Bidang-Bidang */}
-        <div className="w-0.5 h-14 bg-sky-400/60 -mt-4 mb-0" />
-
-        {/* ======================================================== */}
-        {/* LEVEL 3: 4 BIDANG URUSAN (ESELON III)                    */}
-        {/* ======================================================== */}
-        <div className="w-full relative flex flex-col items-center mb-10">
-          
-          {/* Horizontal crossbar connecting the 4 bidang */}
-          <div className="w-[1020px] h-0.5 bg-sky-400/60 relative">
-            <div className="absolute left-[8%] top-0 w-0.5 h-6 bg-sky-400/60" />
-            <div className="absolute left-[36%] top-0 w-0.5 h-6 bg-sky-400/60" />
-            <div className="absolute left-[64%] top-0 w-0.5 h-6 bg-sky-400/60" />
-            <div className="absolute right-[8%] top-0 w-0.5 h-6 bg-sky-400/60" />
-          </div>
-
-          {/* 4 Bidang Columns */}
-          <div className="grid grid-cols-4 gap-6 mt-6 w-[1080px]">
-            
-            {/* Col 1: Bidang Perindustrian */}
-            <div className="flex flex-col items-center">
-              {renderCard(kabidIndustri, 'blue', 'md')}
-              <div className="w-0.5 h-6 bg-sky-400/60" />
-              {renderCard(fungsionalIndustri, 'slate', 'md')}
-            </div>
-
-            {/* Col 2: Bidang Fasilitasi & Pengembangan IKM */}
-            <div className="flex flex-col items-center">
-              {renderCard(kabidIkm, 'blue', 'md')}
-              <div className="w-0.5 h-6 bg-sky-400/60" />
-              {renderCard(fungsionalIkm, 'slate', 'md')}
-            </div>
-
-            {/* Col 3: Bidang Perdagangan Luar Negeri */}
-            <div className="flex flex-col items-center">
-              {renderCard(kabidDaglu, 'blue', 'md')}
-              <div className="w-0.5 h-6 bg-sky-400/60" />
-              {renderCard(fungsionalDaglu, 'slate', 'md')}
-            </div>
-
-            {/* Col 4: Bidang Perdagangan Dalam Negeri */}
-            <div className="flex flex-col items-center">
-              {renderCard(kabidDagri, 'blue', 'md')}
-              <div className="w-0.5 h-6 bg-sky-400/60" />
-              {renderCard(fungsionalDagri, 'slate', 'md')}
-            </div>
-
-          </div>
-
+      {/* ======================================================== */}
+      {/* TIER 4: UNIT PELAKSANA TEKNIS DAERAH (UPTD)              */}
+      {/* ======================================================== */}
+      <div className="rounded-3xl bg-[#091b2e]/60 border border-sky-500/20 p-6 flex flex-col items-center text-center space-y-4">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider">
+          Unit Pelaksana Teknis Daerah (UPTD)
         </div>
 
-        {/* Stem down to UPTD */}
-        <div className="w-0.5 h-12 bg-sky-400/60" />
-
-        {/* ======================================================== */}
-        {/* LEVEL 4: UPTD BALAI PENGUJIAN DAN SERTIFIKASI MUTU       */}
-        {/* ======================================================== */}
-        <div className="flex flex-col items-center">
+        <div className="flex justify-center w-full">
           {renderCard(kepalaUptd, 'blue', 'lg')}
         </div>
-
       </div>
+
     </div>
   );
 }
