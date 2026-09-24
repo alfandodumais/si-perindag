@@ -40,10 +40,11 @@ if (Test-Path "backup") {
     Copy-Item -Recurse -Force "backup" ".next\standalone\"
 }
 
-# 4. Copy Production .env
-Write-Host "`n[4/5] Memastikan file .env disertakan..." -ForegroundColor Yellow
-if (Test-Path ".env") {
-    Copy-Item -Force ".env" ".next\standalone\.env"
+# 4. Keamanan: Jangan sertakan file .env lokal ke dalam arsip rilis
+# agar konfigurasi database di VPS tidak pernah tertimpa atau ter-reset
+Write-Host "`n[4/5] Mengamankan konfigurasi: .env lokal dikecualikan dari paket rilis..." -ForegroundColor Yellow
+if (Test-Path ".next\standalone\.env") {
+    Remove-Item -Force ".next\standalone\.env"
 }
 
 # 5. Compress into tar.gz

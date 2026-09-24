@@ -41,20 +41,30 @@ export NODE_ENV=production
 
 cd /var/www/sipikem-sulut
 
-# Ekstrak paket
-tar -xzf sipikem-deploy.tar.gz
+# 1. Lindungi file .env yang ada di VPS agar tidak pernah ter-reset
+if [ -f .env ]; then
+    cp .env .env.backup
+fi
 
-# Pastikan folder uploads tersedia
+# 2. Ekstrak paket baru (tanpa menimpa folder upload user)
+tar -xzf sipikem-deploy.tar.gz --exclude='public/uploads/*'
+
+# 3. Pulihkan .env VPS jika sempat berubah
+if [ -f .env.backup ]; then
+    mv -f .env.backup .env
+fi
+
+# 4. Pastikan folder uploads fisik tersedia dengan izin yang benar
 mkdir -p public/uploads
 chmod -R 775 public/uploads
 
-# Pastikan PM2 terpasang
+# 5. Pastikan PM2 terpasang
 if ! command -v pm2 >/dev/null 2>&1; then
     echo "[VPS] PM2 belum terpasang, menginstal PM2..."
     npm install -g pm2
 fi
 
-# Restart atau start aplikasi
+# 6. Restart atau start aplikasi
 echo "[VPS] Menjalankan server aplikasi dengan PM2..."
 if pm2 describe sipikem >/dev/null 2>&1; then
     pm2 restart sipikem
