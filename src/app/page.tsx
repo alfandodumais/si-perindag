@@ -71,42 +71,49 @@ export default async function HomePage() {
   return (
     <div className="space-y-16 pb-20">
       
-      {/* Hero Section (Ocean Navy Blue Theme matching dashboard.jpeg) */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0c233c] via-[#103459] to-[#081a2e] text-white pt-16 pb-24 lg:pt-24 lg:pb-32">
+      {/* Hero Section with Calibrated Fixed Proportions on Laptop/Tab and Fluid Layout on Mobile */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0c233c] via-[#103459] to-[#081a2e] text-white pt-14 pb-20 sm:pt-16 sm:pb-24 md:py-0 md:h-[500px] lg:h-[560px] xl:h-[620px] md:flex md:items-center">
         
-        {/* Panoramic Banner Background */}
+        {/* Panoramic Banner Background: anchors right on tablet/laptop to preserve Disperindag logo & products */}
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 bg-cover bg-center md:bg-[center_right] lg:bg-center bg-no-repeat opacity-60 md:opacity-85 pointer-events-none transition-opacity duration-300"
           style={{ backgroundImage: `url('${appSettings.bannerLanding || '/banner.png'}')` }}
         />
+
+        {/* Desktop & Tablet Vignette Gradient: gives dark contrast behind text while keeping right side vibrant */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0c233c]/90 via-[#0c233c]/55 to-transparent pointer-events-none hidden md:block" />
+        
+        {/* Mobile Uniform Dimmer for text legibility */}
+        <div className="absolute inset-0 bg-[#0c233c]/45 pointer-events-none md:hidden" />
+
         {/* Decorative Grid & Glow Accents */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0284c715_1px,transparent_1px),linear-gradient(to_bottom,#0284c715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0284c715_1px,transparent_1px),linear-gradient(to_bottom,#0284c715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl lg:max-w-3xl space-y-6 text-center lg:text-left py-4 lg:py-6">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-2xl md:max-w-md lg:max-w-2xl xl:max-w-3xl space-y-4 sm:space-y-5 lg:space-y-6 text-center md:text-left py-4 lg:py-6">
             
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-              SISTEM INFORMASI PEMBINAAN INDUSTRI KECIL DAN MENENGAH (IKM)
+            <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/30 text-sky-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span>SISTEM INFORMASI PEMBINAAN INDUSTRI KECIL DAN MENENGAH (IKM)</span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white">
+            <h1 className="text-3xl sm:text-4xl md:text-3xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-tight text-white">
               Dari Potensi Lokal <br className="hidden sm:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-sky-200 to-amber-300">
                 Menuju Pasar Global
               </span>
             </h1>
             
-            <p className="text-sky-100/90 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+            <p className="text-sky-100/90 text-xs sm:text-sm md:text-xs lg:text-base xl:text-lg max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
               Portal Layanan Terpadu Fasilitasi &amp; Pembinaan Legalitas, Standardisasi, dan Akselerasi Ekspor IKM Provinsi Sulawesi Utara menuju pasar nasional dan global.
             </p>
 
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-4">
               <Link
                 href="/daftar"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                className="w-full sm:w-auto px-5 py-3 md:px-5 md:py-2.5 lg:px-7 lg:py-3.5 rounded-xl text-xs lg:text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
               >
                 <Store className="w-4 h-4" />
                 Daftar Profil IKM Sekarang
@@ -114,7 +121,7 @@ export default async function HomePage() {
               
               <Link
                 href="/tracking"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-sky-300/30 flex items-center justify-center gap-2 transition-all"
+                className="w-full sm:w-auto px-5 py-3 md:px-5 md:py-2.5 lg:px-7 lg:py-3.5 rounded-xl text-xs lg:text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-sky-300/30 flex items-center justify-center gap-2 transition-all"
               >
                 <Search className="w-4 h-4 text-sky-300" />
                 Cek Status STBP-IKM
@@ -122,15 +129,15 @@ export default async function HomePage() {
             </div>
 
             {/* Verified Badge info */}
-            <div className="pt-3 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-sky-200">
+            <div className="pt-2 lg:pt-3 flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 lg:gap-6 text-[11px] sm:text-xs text-sky-200">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-sky-400" /> 100% Layanan Resmi Pemerintah
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400 shrink-0" /> 100% Layanan Resmi Pemerintah
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-sky-400" /> Cakupan 15 Kabupaten / Kota
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400 shrink-0" /> Cakupan 15 Kabupaten / Kota
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-400" /> Terbit Surat Bukti Terdaftar (STBP)
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" /> Terbit Surat Bukti Terdaftar (STBP)
               </span>
             </div>
 
