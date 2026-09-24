@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Lock, User, ShieldCheck, AlertCircle, ArrowLeft, KeyRound, Crown } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowLeft, KeyRound, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -103,8 +103,8 @@ export default function AdminLoginPage() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-800/80 text-white rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium"
+                  placeholder="Masukkan username atau email"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-800/80 text-white rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -116,13 +116,21 @@ export default function AdminLoginPage() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-800/80 text-white rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-mono"
+                  placeholder="Masukkan kata sandi"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-800/80 text-white rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium placeholder:text-slate-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 p-1 text-slate-400 hover:text-white transition-colors"
+                  title={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -141,45 +149,8 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Quick Credential Helper for Testing */}
-          <div className="pt-4 border-t border-slate-800/80 bg-slate-950/50 -mx-6 -mb-8 p-6 rounded-b-3xl text-center space-y-3">
-            <div className="text-xs font-semibold text-slate-400">
-              Pilih Akun Demo untuk Uji Coba Role:
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('superadmin');
-                  setPassword('superadmin123');
-                }}
-                className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-850 border border-amber-500/40 text-left transition-all hover:border-amber-400 group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-300">
-                  <Crown className="w-3 h-3 text-amber-400" /> Superadmin
-                </div>
-                <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                  superadmin / superadmin123
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('verifikator');
-                  setPassword('admin123');
-                }}
-                className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-850 border border-emerald-500/40 text-left transition-all hover:border-emerald-400 group"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-300">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verifikator
-                </div>
-                <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                  verifikator / admin123
-                </div>
-              </button>
-            </div>
+          <div className="pt-2 text-center text-[11px] text-slate-500">
+            Akses khusus petugas verifikator & administrator berwenang Disperindag Sulut.
           </div>
 
         </div>
