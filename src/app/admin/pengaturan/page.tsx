@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import { 
   Settings, 
@@ -22,16 +22,50 @@ import {
   ExternalLink,
   Layers,
   Check,
-  RefreshCw
+  RefreshCw,
+  Network
 } from 'lucide-react';
-import { DEFAULT_LANDING_BANNER, DEFAULT_DASHBOARD_BANNER, DEFAULT_CATEGORIES } from '@/lib/settings';
+import { 
+  DEFAULT_LANDING_BANNER, 
+  DEFAULT_DASHBOARD_BANNER, 
+  DEFAULT_CATEGORIES,
+  DEFAULT_ORG_STRUCTURE,
+  OrgMember
+} from '@/lib/settings';
+import AdminOrgStructureTab from '@/components/AdminOrgStructureTab';
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center text-xs text-slate-500">
+        Memuat Pengaturan Sistem...
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
+  );
+}
+
+function SettingsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'banner' | 'category'>('banner');
+  const [activeTab, setActiveTab] = useState<'banner' | 'category' | 'struktur'>('banner');
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>(DEFAULT_ORG_STRUCTURE);
+
+  useEffect(() => {
+    if (tabParam === 'struktur') {
+      setActiveTab('struktur');
+    } else if (tabParam === 'category') {
+      setActiveTab('category');
+    } else if (tabParam === 'banner') {
+      setActiveTab('banner');
+    }
+  }, [tabParam]);
 
   // Banner states
   const [bannerLanding, setBannerLanding] = useState<string>(DEFAULT_LANDING_BANNER);
@@ -88,6 +122,9 @@ export default function SettingsPage() {
         setBannerDashboard(data.settings.bannerDashboard || DEFAULT_DASHBOARD_BANNER);
         if (Array.isArray(data.settings.categories) && data.settings.categories.length > 0) {
           setCategories(data.settings.categories);
+        }
+        if (Array.isArray(data.settings.orgStructure) && data.settings.orgStructure.length > 0) {
+          setOrgMembers(data.settings.orgStructure);
         }
       }
     } catch (err) {
@@ -290,6 +327,7 @@ export default function SettingsPage() {
           bannerLanding,
           bannerDashboard,
           categories,
+          orgStructure: orgMembers,
         }),
       });
 
@@ -457,6 +495,18 @@ export default function SettingsPage() {
           >
             <Tags className="w-4 h-4 text-amber-400" />
             <span>Pengaturan Kategori IKM ({categories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('struktur')}
+            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 transition-all ${
+              activeTab === 'struktur'
+                ? 'bg-[#0c233c] text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Network className="w-4 h-4 text-sky-400" />
+            <span>Struktur Disperindag ({orgMembers.length})</span>
           </button>
         </div>
 
@@ -841,6 +891,17 @@ export default function SettingsPage() {
             </div>
 
           </div>
+        )}
+
+        {/* TAB 3: PENGATURAN STRUKTUR ORGANISASI DISPERINDAG */}
+        {activeTab === 'struktur' && (
+          <AdminOrgStructureTab
+            members={orgMembers}
+            onChangeMembers={(updated) => setOrgMembers(updated)}
+            onSaveAll={handleSaveSettings}
+            saving={saving}
+            showToast={showToast}
+          />
         )}
 
       </main>

@@ -73,6 +73,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/struktur" className="hover:text-sky-400 transition-colors">
+                  Struktur Organisasi Disperindag
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin/login" className="hover:text-sky-400 transition-colors flex items-center gap-1">
                   Portal Petugas Disperindag <ExternalLink className="w-3 h-3" />
                 </Link>

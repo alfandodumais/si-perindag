@@ -31,7 +31,9 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Check
+  Check,
+  Network,
+  Layers
 } from 'lucide-react';
 import ArtisanCraftingAnimation from '@/components/ArtisanCraftingAnimation';
 import EditProfileModal from '@/components/EditProfileModal';
@@ -242,8 +244,20 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
             label: 'Pengaturan',
             href: '/admin/pengaturan',
             icon: Settings,
-            desc: 'Banner Portal & Kategori IKM',
+            desc: 'Banner, Kategori & Struktur Disperindag',
             isSuperExclusive: true,
+            subItems: [
+              {
+                label: 'Banner & Kategori',
+                href: '/admin/pengaturan',
+                icon: Layers,
+              },
+              {
+                label: 'Struktur Disperindag',
+                href: '/admin/pengaturan?tab=struktur',
+                icon: Network,
+              },
+            ],
           },
         ]
       : []),
@@ -307,6 +321,51 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
 
             {navItems.map((item) => {
               const Icon = item.icon;
+              const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
+              const isParentActive = pathname === item.href || (hasSubItems && pathname.startsWith(item.href));
+
+              if (hasSubItems) {
+                return (
+                  <div key={item.href} className="space-y-1">
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
+                        isParentActive
+                          ? 'bg-[#122d4a] text-white font-bold border border-sky-500/30'
+                          : 'text-slate-300 hover:text-white hover:bg-[#122d4a]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
+                          isParentActive ? 'text-sky-400' : 'text-sky-400 group-hover:text-sky-300'
+                        }`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      <Crown className="w-3 h-3 text-amber-400 opacity-80" />
+                    </Link>
+
+                    {/* Submenu links */}
+                    <div className="pl-6 pr-1 py-1 space-y-0.5 border-l border-sky-500/30 ml-5 my-0.5">
+                      {item.subItems?.map((sub) => {
+                        const SubIcon = sub.icon;
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-sky-200/90 hover:text-white hover:bg-sky-500/20 transition-all group"
+                          >
+                            {SubIcon && <SubIcon className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform shrink-0" />}
+                            <span className="truncate">{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
               const isActive = pathname === item.href;
 
               return (

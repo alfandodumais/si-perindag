@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { bannerLanding, bannerDashboard, categories } = body;
+    const { bannerLanding, bannerDashboard, categories, orgStructure } = body;
 
     if (bannerLanding !== undefined && typeof bannerLanding === 'string') {
       await saveAppSetting('banner_landing', bannerLanding.trim() || '/banner.png');
@@ -62,6 +62,10 @@ export async function PUT(req: NextRequest) {
       }
 
       await saveAppSetting('ikm_categories', JSON.stringify(cleanCategories));
+    }
+
+    if (orgStructure !== undefined && Array.isArray(orgStructure)) {
+      await saveAppSetting('org_structure', JSON.stringify(orgStructure));
     }
 
     const updatedSettings = await getAppSettings();

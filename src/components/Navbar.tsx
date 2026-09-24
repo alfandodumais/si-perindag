@@ -13,6 +13,7 @@ import {
   Home,
   Sparkles,
   ShoppingBag,
+  Network,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -31,6 +32,7 @@ export default function Navbar() {
     { label: 'Cek Status STBP', href: '/tracking', icon: Search },
     { label: 'Peta Sebaran IKM', href: '/peta', icon: MapPin },
     { label: 'Katalog IKM', href: '/katalog', icon: ShoppingBag },
+    { label: 'Struktur Disperindag', href: '/struktur', icon: Network },
   ];
 
   return (

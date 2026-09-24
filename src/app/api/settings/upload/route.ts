@@ -51,12 +51,20 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const prefix = target === 'landing' ? 'banner-landing' : 'banner-dashboard';
+    let prefix = 'banner';
+    if (target === 'landing') {
+      prefix = 'banner-landing';
+    } else if (target === 'dashboard') {
+      prefix = 'banner-dashboard';
+    } else if (target === 'official') {
+      prefix = 'pejabat';
+    }
+
     const physicalUrl = await saveBufferAsPhysicalFile(buffer, file.name, prefix);
 
     return NextResponse.json({
       success: true,
-      message: 'Banner berhasil diunggah ke server.',
+      message: 'Berkas gambar berhasil diunggah ke server.',
       url: physicalUrl,
     });
   } catch (error: any) {
