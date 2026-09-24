@@ -58,6 +58,7 @@ function DataIkmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialAction = searchParams.get('action');
+  const initialId = searchParams.get('id');
 
   // State
   const [merchants, setMerchants] = useState<any[]>([]);
@@ -198,6 +199,12 @@ function DataIkmContent() {
       const data = await res.json();
       if (data.success) {
         setMerchants(data.data);
+        if (initialId) {
+          const target = data.data.find((m: any) => m.id === initialId);
+          if (target) {
+            setDetailMerchant(target);
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching IKM data:', err);

@@ -24,11 +24,14 @@ import {
   ChevronDown,
   Globe,
   UserCog,
-  Search, 
   Bell, 
   Sparkles,
   FileCheck2,
-  Settings 
+  Settings,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Check
 } from 'lucide-react';
 import ArtisanCraftingAnimation from '@/components/ArtisanCraftingAnimation';
 import EditProfileModal from '@/components/EditProfileModal';
@@ -53,6 +56,82 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Notification System State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sipikem_read_notifications');
+      if (stored) {
+        setReadNotificationIds(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setNotifications(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !readNotificationIds.includes(n.id)).length;
+
+  const markAllAsRead = () => {
+    const allIds = notifications.map((n) => n.id);
+    setReadNotificationIds(allIds);
+    try {
+      localStorage.setItem('sipikem_read_notifications', JSON.stringify(allIds));
+    } catch (e) {}
+  };
+
+  const handleNotificationClick = (item: any) => {
+    if (!readNotificationIds.includes(item.id)) {
+      const updated = [...readNotificationIds, item.id];
+      setReadNotificationIds(updated);
+      try {
+        localStorage.setItem('sipikem_read_notifications', JSON.stringify(updated));
+      } catch (e) {}
+    }
+    setNotificationDropdownOpen(false);
+    if (item.url) {
+      router.push(item.url);
+    }
+  };
+
+  function formatRelativeTime(dateString: string) {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+      if (diffInSeconds < 60) return 'Baru saja';
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) return `${diffInMinutes} mnt lalu`;
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `${diffInHours} jam lalu`;
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) return `${diffInDays} hari lalu`;
+      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    } catch (e) {
+      return '';
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUser(user);
@@ -64,14 +143,17 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setProfileDropdownOpen(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationDropdownOpen(false);
+      }
     }
-    if (profileDropdownOpen) {
+    if (profileDropdownOpen || notificationDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [profileDropdownOpen]);
+  }, [profileDropdownOpen, notificationDropdownOpen]);
 
   const isSuperadmin = currentUser?.role === 'SUPERADMIN';
 
@@ -306,16 +388,12 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Search Input Bar (matching dashboard.jpeg) */}
-            <div className="relative w-full max-w-md hidden sm:block">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari data IKM, produk, kab/kota, legalitas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
-              />
+            {/* Portal Badge / Title (Search removed as requested) */}
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-bold text-slate-800">Portal Manajemen SIPIKEM SULUT</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500 text-[11px]">Disperindag Provinsi Sulawesi Utara</span>
             </div>
           </div>
 
@@ -328,14 +406,140 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
               <span>Pemerintah Provinsi Sulawesi Utara</span>
             </div>
 
-            {/* Notification Bell with Badge */}
-            <button
-              title="Notifikasi Sistem"
-              className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-            </button>
+            {/* Interactive Notification Bell with Badge & Dropdown */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                type="button"
+                onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+                title="Notifikasi Pendaftaran & Verifikasi IKM"
+                className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                aria-label="Buka Notifikasi"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown Menu */}
+              {notificationDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  {/* Dropdown Header */}
+                  <div className="px-4 py-3 bg-gradient-to-r from-[#0c233c] to-[#123963] text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-sky-400" />
+                      <span className="font-bold text-xs tracking-wide">Notifikasi Sistem</span>
+                      {unreadCount > 0 && (
+                        <span className="px-1.5 py-0.5 bg-rose-500 text-[10px] font-extrabold rounded-full shadow-xs">
+                          {unreadCount} baru
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllAsRead}
+                        className="text-[10px] text-sky-200 hover:text-white underline hover:no-underline transition-colors font-medium"
+                      >
+                        Tandai semua dibaca
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 text-xs space-y-1">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto opacity-60" />
+                        <p className="font-semibold text-slate-600">Belum ada notifikasi baru</p>
+                        <p className="text-[11px] text-slate-400">Pendaftaran IKM dan hasil verifikasi akan muncul di sini.</p>
+                      </div>
+                    ) : (
+                      notifications.map((item) => {
+                        const isRead = readNotificationIds.includes(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleNotificationClick(item)}
+                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 text-left group ${
+                              !isRead ? 'bg-sky-50/40' : ''
+                            }`}
+                          >
+                            {/* Icon Indicator */}
+                            <div className="shrink-0 mt-0.5">
+                              {item.status === 'PENDING' ? (
+                                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-xs">
+                                  <Clock className="w-4 h-4" />
+                                </div>
+                              ) : item.status === 'APPROVED' ? (
+                                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-xs">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shadow-xs">
+                                  <XCircle className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md ${
+                                  item.status === 'PENDING'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200/60'
+                                    : item.status === 'APPROVED'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                                    : 'bg-rose-100 text-rose-800 border border-rose-200/60'
+                                }`}>
+                                  {item.title}
+                                </span>
+                                <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                                  {formatRelativeTime(item.timestamp)}
+                                </span>
+                              </div>
+
+                              <p className="text-xs font-bold text-slate-800 truncate">
+                                {item.businessName}
+                              </p>
+                              <p className="text-[11px] text-slate-600 line-clamp-2 leading-tight mt-0.5">
+                                {item.message}
+                              </p>
+
+                              <div className="mt-1 flex items-center gap-1 text-[10px] text-sky-600 font-bold group-hover:text-sky-700">
+                                <span>Buka data IKM</span>
+                                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                              </div>
+                            </div>
+
+                            {/* Unread indicator dot */}
+                            {!isRead && (
+                              <div className="shrink-0 self-center">
+                                <span className="w-2 h-2 rounded-full bg-sky-500 block shadow-xs" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Dropdown Footer */}
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                    <Link
+                      href="/admin/verifikasi"
+                      onClick={() => setNotificationDropdownOpen(false)}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 inline-flex items-center gap-1"
+                    >
+                      <span>Lihat Semua Antrean Verifikasi</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Interactive Profile Circle Avatar & Dropdown Menu */}
             <div className="relative" ref={dropdownRef}>
