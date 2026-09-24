@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Building2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { OrgMember, DEFAULT_ORG_STRUCTURE } from '@/lib/settings';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -47,6 +48,7 @@ export default function AdminOrgStructureTab({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [savingMember, setSavingMember] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Confirm Modal State
@@ -102,7 +104,7 @@ export default function AdminOrgStructureTab({
     setIsModalOpen(true);
   };
 
-  // Handle upload official photo
+  // Handle upload official photo with resilient Base64 fallback
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,58 +116,94 @@ export default function AdminOrgStructureTab({
 
     setUploadingPhoto(true);
     try {
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      uploadFormData.append('target', 'official');
+      let photoUrl: string | null = null;
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
+        uploadFormData.append('target', 'official');
 
-      const res = await fetch('/api/settings/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
+        const res = await fetch('/api/settings/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal mengunggah foto');
+        const data = await res.json();
+        if (res.ok && data.success && data.url) {
+          photoUrl = data.url;
+        }
+      } catch (netErr) {
+        console.warn('Physical upload route error, using browser FileReader fallback:', netErr);
       }
 
-      setFormData((prev) => ({ ...prev, photo: data.url }));
-      showToast('success', 'Foto resmi berhasil diunggah.');
+      // If server route didn't return URL, fallback to high-quality Base64 Data URL so photo upload never fails
+      if (!photoUrl) {
+        photoUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setFormData((prev) => ({ ...prev, photo: photoUrl }));
+      showToast('success', 'Foto berhasil dimuat! Klik "Simpan ke Database" untuk menerapkan.');
     } catch (err: any) {
-      showToast('error', err.message || 'Gagal mengunggah foto.');
+      showToast('error', err.message || 'Gagal memproses berkas foto.');
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // Save form data into members list
-  const handleSaveMember = (e: React.FormEvent) => {
+  // Save form data into members list AND persist directly to database
+  const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      showToast('error', 'Jabatan resmi tidak boleh kosong.');
+      showToast('error', 'Nama jabatan resmi wajib diisi.');
       return;
     }
     if (!formData.name.trim()) {
-      showToast('error', 'Nama pejabat tidak boleh kosong (gunakan tanda - jika belum terisi).');
+      showToast('error', 'Nama pejabat wajib diisi (gunakan tanda "-" jika belum ada pejabat definitif).');
       return;
     }
 
-    let updatedList: OrgMember[];
-    if (editingId) {
-      updatedList = members.map((m) => (m.id === editingId ? { ...formData } : m));
-      showToast('success', `Data "${formData.title}" diperbarui. Klik Simpan Perubahan.`);
-    } else {
-      updatedList = [...members, { ...formData }];
-      showToast('success', `Pejabat baru "${formData.title}" ditambahkan.`);
-    }
+    setSavingMember(true);
+    try {
+      let updatedList: OrgMember[];
+      if (editingId) {
+        updatedList = members.map((m) => (m.id === editingId ? { ...formData } : m));
+      } else {
+        const newId = formData.id || String(Date.now());
+        updatedList = [...members, { ...formData, id: newId }];
+      }
 
-    // Sort by order ascending
-    updatedList.sort((a, b) => a.order - b.order);
-    onChangeMembers(updatedList);
-    setIsModalOpen(false);
+      // Sort by order ascending
+      updatedList.sort((a, b) => a.order - b.order);
+
+      // Save directly to PostgreSQL database via API
+      const res = await fetch('/api/org-structure', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgStructure: updatedList }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Gagal menyimpan ke basis data.');
+      }
+
+      onChangeMembers(updatedList);
+      setIsModalOpen(false);
+      showToast('success', `Data "${formData.title}" & foto resmi berhasil disimpan ke database!`);
+    } catch (err: any) {
+      console.error('Error saving member:', err);
+      showToast('error', err.message || 'Terjadi kesalahan sistem saat menyimpan ke database.');
+    } finally {
+      setSavingMember(false);
+    }
   };
 
-  // Delete member
+  // Delete member with direct database persist
   const handleDeleteMember = (id: string, title: string) => {
     if (members.length <= 1) {
       showToast('error', 'Minimal harus ada 1 entitas struktur.');
@@ -174,20 +212,34 @@ export default function AdminOrgStructureTab({
     setConfirmDialog({
       isOpen: true,
       title: 'Hapus Dari Bagan Struktur?',
-      message: `Apakah Anda yakin ingin menghapus "${title}" dari bagan struktur organisasi? Tindakan ini akan diterapkan saat Anda menekan tombol "Simpan Perubahan".`,
+      message: `Apakah Anda yakin ingin menghapus "${title}" dari bagan struktur organisasi? Data akan langsung terhapus dari basis data.`,
       confirmText: 'Ya, Hapus Pejabat',
       variant: 'danger',
-      onConfirm: () => {
-        const updated = members.filter((m) => m.id !== id);
-        onChangeMembers(updated);
-        showToast('success', `"${title}" dihapus. Klik Simpan Perubahan.`);
-        setConfirmDialog(null);
+      onConfirm: async () => {
+        try {
+          const updated = members.filter((m) => m.id !== id);
+          const res = await fetch('/api/org-structure', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgStructure: updated }),
+          });
+          const resData = await res.json();
+          if (!res.ok || !resData.success) {
+            throw new Error(resData.message || 'Gagal menghapus data di database.');
+          }
+          onChangeMembers(updated);
+          showToast('success', `"${title}" berhasil dihapus dari basis data.`);
+        } catch (err: any) {
+          showToast('error', err.message || 'Gagal menghapus pejabat dari database.');
+        } finally {
+          setConfirmDialog(null);
+        }
       },
     });
   };
 
-  // Move order up / down
-  const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
+  // Move order up / down with auto-save
+  const handleMoveOrder = async (index: number, direction: 'up' | 'down') => {
     if (
       (direction === 'up' && index === 0) ||
       (direction === 'down' && index === members.length - 1)
@@ -207,20 +259,44 @@ export default function AdminOrgStructureTab({
     });
 
     onChangeMembers(newItems);
+
+    try {
+      await fetch('/api/org-structure', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgStructure: newItems }),
+      });
+    } catch (e) {
+      console.error('Auto-save order error:', e);
+    }
   };
 
-  // Reset to default Sulut structure
+  // Reset to default Sulut structure with direct database persist
   const handleResetToDefault = () => {
     setConfirmDialog({
       isOpen: true,
       title: 'Reset Struktur ke Standar SK?',
-      message: 'Perhatian: Seluruh susunan bagan dan foto pejabat yang telah diubah akan dikembalikan ke struktur standar resmi Disperindag Sulawesi Utara (14 pejabat sesuai SK). Perubahan yang belum disimpan akan digantikan.',
+      message: 'Perhatian: Seluruh susunan bagan dan foto pejabat akan dikembalikan ke struktur standar resmi Disperindag Sulawesi Utara (14 pejabat sesuai SK). Perubahan akan langsung disimpan ke basis data.',
       confirmText: 'Ya, Reset ke Standar SK',
       variant: 'warning',
-      onConfirm: () => {
-        onChangeMembers(DEFAULT_ORG_STRUCTURE);
-        showToast('success', 'Struktur dikembalikan ke susunan resmi Disperindag Sulut.');
-        setConfirmDialog(null);
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/org-structure', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgStructure: DEFAULT_ORG_STRUCTURE }),
+          });
+          const resData = await res.json();
+          if (!res.ok || !resData.success) {
+            throw new Error(resData.message || 'Gagal me-reset struktur di database.');
+          }
+          onChangeMembers(DEFAULT_ORG_STRUCTURE);
+          showToast('success', 'Struktur resmi Disperindag Sulut berhasil disimpan ke database.');
+        } catch (err: any) {
+          showToast('error', err.message || 'Gagal me-reset struktur.');
+        } finally {
+          setConfirmDialog(null);
+        }
       },
     });
   };
@@ -525,15 +601,25 @@ export default function AdminOrgStructureTab({
               
               {/* Photo Upload Row */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
-                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-300 bg-white shadow-xs flex items-center justify-center shrink-0">
+                <div 
+                  onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+                  className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-300 hover:border-sky-500 cursor-pointer bg-white shadow-xs flex items-center justify-center shrink-0 group transition-all"
+                  title="Klik untuk memilih foto profil pejabat"
+                >
                   {formData.photo ? (
                     <img src={formData.photo} alt="Foto Pejabat" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-10 h-10 text-slate-300" />
+                    <User className="w-10 h-10 text-slate-300 group-hover:text-sky-500 transition-colors" />
                   )}
-                  {uploadingPhoto && (
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center text-white text-[10px] font-bold">
-                      Mengunggah...
+                  {uploadingPhoto ? (
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center text-white text-[9px] font-bold gap-1">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Memuat...</span>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 bg-sky-950/40 opacity-0 group-hover:opacity-100 backdrop-blur-[1px] flex flex-col items-center justify-center text-white text-[9px] font-bold transition-opacity">
+                      <Upload className="w-4 h-4 text-white mb-0.5" />
+                      <span>Ubah</span>
                     </div>
                   )}
                 </div>
@@ -692,16 +778,28 @@ export default function AdminOrgStructureTab({
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
+                  disabled={savingMember || uploadingPhoto}
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/30 transition-all hover:scale-[1.02]"
+                  disabled={savingMember || uploadingPhoto}
+                  className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold text-xs shadow-md shadow-sky-600/30 transition-all hover:scale-[1.02] flex items-center gap-2 disabled:opacity-50"
                 >
-                  {editingId ? 'Simpan Pejabat' : 'Tambahkan Pejabat'}
+                  {savingMember ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Menyimpan ke Database...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{editingId ? 'Simpan ke Database' : 'Tambahkan ke Database'}</span>
+                    </>
+                  )}
                 </button>
               </div>
 

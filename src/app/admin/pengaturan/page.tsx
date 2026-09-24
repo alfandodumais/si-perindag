@@ -477,7 +477,7 @@ function SettingsContent() {
         
         {/* Toast Notification */}
         {toast && (
-          <div className="fixed top-20 right-6 z-50 animate-bounce">
+          <div className="fixed top-20 right-6 z-[100000] animate-bounce">
             <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-semibold ${
               toast.type === 'success' 
                 ? 'bg-emerald-950 text-emerald-200 border-emerald-500/50' 
