@@ -22,13 +22,22 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 3. Copy Static Assets
-Write-Host "`n[3/5] Mengintegrasikan static assets ke .next/standalone..." -ForegroundColor Yellow
+# 3. Copy Static Assets, Prisma schema, scripts, and backup
+Write-Host "`n[3/5] Mengintegrasikan static assets, prisma, dan scripts ke .next/standalone..." -ForegroundColor Yellow
 if (Test-Path "public") {
     Copy-Item -Recurse -Force "public" ".next\standalone\"
 }
 if (Test-Path ".next\static") {
     Copy-Item -Recurse -Force ".next\static" ".next\standalone\.next\"
+}
+if (Test-Path "prisma") {
+    Copy-Item -Recurse -Force "prisma" ".next\standalone\"
+}
+if (Test-Path "scripts") {
+    Copy-Item -Recurse -Force "scripts" ".next\standalone\"
+}
+if (Test-Path "backup") {
+    Copy-Item -Recurse -Force "backup" ".next\standalone\"
 }
 
 # 4. Copy Production .env

@@ -10,7 +10,8 @@
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
     "postinstall": "prisma generate",
-    "package": "powershell -ExecutionPolicy Bypass -File ./scripts/package.ps1"
+    "package": "powershell -ExecutionPolicy Bypass -File ./scripts/package.ps1",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
