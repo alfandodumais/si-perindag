@@ -34,25 +34,38 @@ if ($LASTEXITCODE -ne 0) {
 
 # 3. Extract & Restart PM2 via SSH
 Write-Host "`n[3/3] Menerapkan update & restart PM2 di VPS..." -ForegroundColor Yellow
-$remoteCommand = @"
-export PATH=`$PATH:/usr/local/bin:/usr/bin:~/.npm-global/bin:~/.nvm/versions/node/$(ls ~/.nvm/versions/node 2>/dev/null | tail -n 1)/bin
-if ! command -v node >/dev/null 2>&1; then
-    echo "Error: Node.js belum terpasang di VPS!"
-    exit 1
-fi
-if ! command -v pm2 >/dev/null 2>&1; then
-    echo "PM2 belum terpasang di VPS, menginstal PM2 secara otomatis..."
-    npm install -g pm2
-fi
-cd $VpsDir
+
+$remoteScript = @'
+export PATH=$PATH:/usr/local/bin:/usr/bin:~/.npm-global/bin
+export NODE_ENV=production
+
+cd /var/www/sipikem-sulut
+
+# Ekstrak paket
 tar -xzf sipikem-deploy.tar.gz
+
+# Pastikan folder uploads tersedia
 mkdir -p public/uploads
 chmod -R 775 public/uploads
-(pm2 restart sipikem || PORT=3000 pm2 start server.js --name sipikem)
-pm2 save
-"@
 
-ssh ${VpsUser}@${VpsHost} $remoteCommand
+# Pastikan PM2 terpasang
+if ! command -v pm2 >/dev/null 2>&1; then
+    echo "[VPS] PM2 belum terpasang, menginstal PM2..."
+    npm install -g pm2
+fi
+
+# Restart atau start aplikasi
+echo "[VPS] Menjalankan server aplikasi dengan PM2..."
+if pm2 describe sipikem >/dev/null 2>&1; then
+    pm2 restart sipikem
+else
+    PORT=3000 pm2 start server.js --name sipikem
+fi
+pm2 save
+echo "[VPS] Aplikasi berhasil berjalan di PM2!"
+'@
+
+$remoteScript | ssh "${VpsUser}@${VpsHost}" "bash -s"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error saat update / restart server di VPS!" -ForegroundColor Red
     exit 1
