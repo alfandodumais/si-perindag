@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { MapPin, Filter, Search, Store, Building2, Eye, Sparkles } from 'lucide-react';
+import { MapPin, Filter, Search, Store, Building2, Eye, Sparkles, Info } from 'lucide-react';
 import SuratKeteranganModal from '@/components/SuratKeteranganModal';
+import IkmProductDetailModal from '@/components/IkmProductDetailModal';
 import { KABUPATEN_KOTA_SULUT, KATEGORI_IKM_SULUT } from '@/lib/constants';
 
 const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
@@ -16,18 +18,42 @@ const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
 });
 
 export default function PetaPublikPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-400 text-xs">
+          Memuat Peta Sebaran GIS IKM Sulawesi Utara...
+        </div>
+      }
+    >
+      <PetaPublikContent />
+    </Suspense>
+  );
+}
+
+function PetaPublikContent() {
+  const searchParams = useSearchParams();
+  const initialId = searchParams.get('id');
+  const initialSearch = searchParams.get('search');
+
   const [merchants, setMerchants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedRegency, setSelectedRegency] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch || '');
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
+  
+  // Modals
+  const [showStbpModal, setShowStbpModal] = useState(false);
+  const [showProductDetailModal, setShowProductDetailModal] = useState(false);
+  const [detailMerchant, setDetailMerchant] = useState<any>(null);
+
+  const selectedItemRef = useRef<HTMLDivElement>(null);
 
   const fetchMerchants = async () => {
     setLoading(true);
     try {
-      let url = `/api/merchants?limit=250`;
+      let url = `/api/merchants?limit=250&status=APPROVED`;
       if (selectedCategory !== 'ALL') url += `&category=${encodeURIComponent(selectedCategory)}`;
       if (selectedRegency !== 'ALL') url += `&regency=${encodeURIComponent(selectedRegency)}`;
       if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
@@ -36,6 +62,14 @@ export default function PetaPublikPage() {
       const data = await res.json();
       if (data.success) {
         setMerchants(data.data);
+
+        // Auto focus if initialId is present
+        if (initialId) {
+          const found = data.data.find((m: any) => m.id === initialId);
+          if (found) {
+            setSelectedMerchant(found);
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching public IKM for map:', err);
@@ -47,6 +81,13 @@ export default function PetaPublikPage() {
   useEffect(() => {
     fetchMerchants();
   }, [selectedCategory, selectedRegency]);
+
+  // Scroll to selected merchant in the sidebar list
+  useEffect(() => {
+    if (selectedMerchant && selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedMerchant]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,8 +170,13 @@ export default function PetaPublikPage() {
           <MapDisplay
             merchants={merchants}
             height="620px"
-            selectedId={selectedMerchant?.id}
+            selectedId={selectedMerchant?.id || initialId}
             onSelectMerchant={(m) => setSelectedMerchant(m)}
+            onOpenDetail={(m) => {
+              setSelectedMerchant(m);
+              setDetailMerchant(m);
+              setShowProductDetailModal(true);
+            }}
           />
         </div>
 
@@ -154,10 +200,11 @@ export default function PetaPublikPage() {
                 return (
                   <div
                     key={m.id}
+                    ref={isSelected ? selectedItemRef : null}
                     onClick={() => setSelectedMerchant(m)}
                     className={`p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-sky-500 bg-sky-50/60 shadow-xs'
+                        ? 'border-sky-500 bg-sky-50/70 shadow-xs ring-1 ring-sky-400/40'
                         : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
@@ -180,19 +227,28 @@ export default function PetaPublikPage() {
                     </div>
 
                     {isSelected && (
-                      <div className="mt-2.5 pt-2 border-t border-sky-200/60 flex items-center justify-between">
-                        <span className="text-[9px] text-sky-800 font-mono">
-                          {m.registrationNo}
-                        </span>
+                      <div className="mt-2.5 pt-2 border-t border-sky-200/60 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setShowModal(true);
+                            setDetailMerchant(m);
+                            setShowProductDetailModal(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold flex items-center gap-1 transition-colors shadow-2xs"
+                        >
+                          <Info className="w-3 h-3" /> Rincian Produk
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowStbpModal(true);
                           }}
                           className="text-[10px] font-bold text-sky-700 hover:text-sky-900 flex items-center gap-1"
                         >
-                          <Eye className="w-3 h-3" /> Lihat STBP
+                          <Eye className="w-3 h-3" /> STBP-IKM
                         </button>
                       </div>
                     )}
@@ -205,12 +261,25 @@ export default function PetaPublikPage() {
 
       </div>
 
+      {/* Rincian Produk Modal (Identik dengan Katalog IKM) */}
+      <IkmProductDetailModal
+        merchant={detailMerchant}
+        isOpen={showProductDetailModal}
+        onClose={() => setShowProductDetailModal(false)}
+        showMapButton={false}
+        onOpenCertificate={(m) => {
+          setShowProductDetailModal(false);
+          setSelectedMerchant(m);
+          setShowStbpModal(true);
+        }}
+      />
+
       {/* Printable Certificate Modal if clicked */}
       {selectedMerchant && (
         <SuratKeteranganModal
           merchant={selectedMerchant}
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
+          isOpen={showStbpModal}
+          onClose={() => setShowStbpModal(false)}
         />
       )}
 

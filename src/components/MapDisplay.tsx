@@ -23,6 +23,7 @@ interface MapDisplayProps {
   height?: string;
   selectedId?: string | null;
   onSelectMerchant?: (merchant: MerchantPin) => void;
+  onOpenDetail?: (merchant: any) => void;
 }
 
 export default function MapDisplay({
@@ -30,10 +31,14 @@ export default function MapDisplay({
   height = '500px',
   selectedId,
   onSelectMerchant,
+  onOpenDetail,
 }: MapDisplayProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
+  const markerMapRef = useRef<Map<string, any>>(new Map());
+  const onOpenDetailRef = useRef(onOpenDetail);
+  onOpenDetailRef.current = onOpenDetail;
 
   useEffect(() => {
     let isMounted = true;
@@ -59,6 +64,23 @@ export default function MapDisplay({
 
         const markersLayer = L.layerGroup().addTo(map);
 
+        map.on('popupopen', (e: any) => {
+          const popupElement = e.popup?.getElement();
+          if (!popupElement) return;
+          const btn = popupElement.querySelector('.map-popup-detail-btn');
+          if (btn) {
+            btn.onclick = (event: MouseEvent) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const id = btn.getAttribute('data-id');
+              const targetMerchant = merchants.find((item) => item.id === id);
+              if (targetMerchant && onOpenDetailRef.current) {
+                onOpenDetailRef.current(targetMerchant);
+              }
+            };
+          }
+        });
+
         mapInstanceRef.current = map;
         markersLayerRef.current = markersLayer;
       }
@@ -66,6 +88,7 @@ export default function MapDisplay({
       // Populate markers
       if (mapInstanceRef.current && markersLayerRef.current) {
         markersLayerRef.current.clearLayers();
+        markerMapRef.current.clear();
 
         const validPins = merchants.filter(
           (m) => typeof m.latitude === 'number' && typeof m.longitude === 'number' && !isNaN(m.latitude)
@@ -115,19 +138,29 @@ export default function MapDisplay({
           const marker = L.marker([m.latitude, m.longitude], { icon: pinIcon });
 
           const popupContent = `
-            <div style="min-width: 200px; font-family: sans-serif;">
+            <div style="min-width: 220px; font-family: system-ui, -apple-system, sans-serif;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-size: 10px; font-weight: 700; color: ${statusText}; background-color: ${statusBg}; padding: 2px 6px; border-radius: 9999px;">
+                <span style="font-size: 10px; font-weight: 700; color: ${statusText}; background-color: ${statusBg}; padding: 2px 7px; border-radius: 9999px;">
                   ${statusLabel}
                 </span>
-                <span style="font-size: 10px; color: #64748b;">${m.registrationNo}</span>
+                <span style="font-size: 10px; font-family: monospace; color: #64748b;">${m.registrationNo}</span>
               </div>
-              <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: #0f172a;">${m.businessName}</h4>
-              <p style="margin: 0 0 6px 0; font-size: 11px; color: #475569;">Pemilik: <b>${m.ownerName}</b></p>
+              <h4 style="margin: 0 0 3px 0; font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.3;">${m.businessName}</h4>
+              <p style="margin: 0 0 4px 0; font-size: 11px; color: #475569;">Pemilik: <b>${m.ownerName}</b></p>
               <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">
                 <span>Kategori: <b>${m.category}</b></span> • <span>Skala: <b>${m.scale}</b></span>
               </div>
-              <p style="margin: 0; font-size: 11px; color: #64748b; line-height: 1.4;">${m.address}, Kec. ${m.district}</p>
+              <p style="margin: 0 0 8px 0; font-size: 11px; color: #64748b; line-height: 1.4;">${m.address}, Kec. ${m.district}</p>
+              
+              <button 
+                type="button" 
+                class="map-popup-detail-btn" 
+                data-id="${m.id}" 
+                style="width: 100%; padding: 7px 10px; background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%); color: #ffffff; font-weight: 700; font-size: 11px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 4px rgba(2,132,199,0.25); text-decoration: none;"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Lihat Rincian Produk & Legalitas &rarr;</span>
+              </button>
             </div>
           `;
 
@@ -140,10 +173,11 @@ export default function MapDisplay({
           });
 
           marker.addTo(markersLayerRef.current);
+          markerMapRef.current.set(m.id, marker);
           bounds.extend([m.latitude, m.longitude]);
         });
 
-        if (validPins.length > 0) {
+        if (validPins.length > 0 && !selectedId) {
           mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
         }
       }
@@ -160,14 +194,20 @@ export default function MapDisplay({
     };
   }, [merchants]);
 
-  // Center on selected merchant if prop updates
+  // Center on selected merchant and open popup if prop updates
   useEffect(() => {
-    if (selectedId && mapInstanceRef.current) {
+    if (selectedId && mapInstanceRef.current && markerMapRef.current) {
       const target = merchants.find((m) => m.id === selectedId);
+      const marker = markerMapRef.current.get(selectedId);
       if (target && target.latitude && target.longitude) {
         mapInstanceRef.current.setView([target.latitude, target.longitude], 16, {
           animate: true,
         });
+        if (marker) {
+          setTimeout(() => {
+            marker.openPopup();
+          }, 300);
+        }
       }
     }
   }, [selectedId, merchants]);

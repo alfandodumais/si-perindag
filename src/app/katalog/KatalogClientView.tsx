@@ -583,10 +583,10 @@ export default function KatalogClientView({ initialMerchants, categories }: Kata
             {/* Modal Actions */}
             <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <Link
-                href={`/peta?search=${encodeURIComponent(selectedMerchant.businessName)}`}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 hover:text-sky-900"
+                href={`/peta?id=${selectedMerchant.id}&search=${encodeURIComponent(selectedMerchant.businessName)}`}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 hover:text-sky-900 transition-colors"
               >
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4 text-sky-600" />
                 Lihat di Peta Sebaran GIS Sulut &rarr;
               </Link>
 
