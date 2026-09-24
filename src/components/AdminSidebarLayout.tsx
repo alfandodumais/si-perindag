@@ -375,7 +375,7 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
         
         {/* TOP HEADER BAR matching dashboard.jpeg */}
-        <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-xs">
+        <header className="sticky top-0 z-40 h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-xs">
           
           <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-xl">
             {/* Mobile Hamburger */}
@@ -425,7 +425,7 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
 
               {/* Notification Dropdown Menu */}
               {notificationDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-150">
                   {/* Dropdown Header */}
                   <div className="px-4 py-3 bg-gradient-to-r from-[#0c233c] to-[#123963] text-white flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -583,7 +583,7 @@ export default function AdminSidebarLayout({ children, user }: AdminSidebarLayou
 
               {/* Profile Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
                   {/* Dropdown Header Info */}
                   <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
                     <div className="flex items-center gap-3">

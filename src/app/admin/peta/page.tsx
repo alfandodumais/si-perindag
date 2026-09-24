@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { MapPin, Filter, Search, Building2, Eye, ExternalLink, Layers, CheckCircle2 } from 'lucide-react';
 import AdminSidebarLayout from '@/components/AdminSidebarLayout';
 import SuratKeteranganModal from '@/components/SuratKeteranganModal';
+import IkmProductDetailModal from '@/components/IkmProductDetailModal';
 import { KABUPATEN_KOTA_SULUT, KATEGORI_IKM_SULUT } from '@/lib/constants';
 
 const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
@@ -25,6 +26,7 @@ export default function AdminPetaPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -143,6 +145,10 @@ export default function AdminPetaPage() {
               height="600px"
               selectedId={selectedMerchant?.id}
               onSelectMerchant={(m) => setSelectedMerchant(m)}
+              onOpenDetail={(m) => {
+                setSelectedMerchant(m);
+                setShowDetailModal(true);
+              }}
             />
           </div>
 
@@ -192,10 +198,17 @@ export default function AdminPetaPage() {
                       </div>
 
                       {isSelected && (
-                        <div className="mt-2.5 pt-2 border-t border-sky-200/60 flex items-center justify-between">
-                          <span className="text-[9px] text-sky-800 font-mono">
-                            {m.registrationNo}
-                          </span>
+                        <div className="mt-2.5 pt-2 border-t border-sky-200/60 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDetailModal(true);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold transition-colors"
+                          >
+                            Rincian Produk
+                          </button>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -216,6 +229,19 @@ export default function AdminPetaPage() {
           </div>
 
         </div>
+
+        {selectedMerchant && (
+          <IkmProductDetailModal
+            merchant={selectedMerchant}
+            isOpen={showDetailModal}
+            onClose={() => setShowDetailModal(false)}
+            showMapButton={false}
+            onOpenCertificate={() => {
+              setShowDetailModal(false);
+              setShowModal(true);
+            }}
+          />
+        )}
 
         {selectedMerchant && (
           <SuratKeteranganModal

@@ -39,6 +39,8 @@ export default function MapDisplay({
   const markerMapRef = useRef<Map<string, any>>(new Map());
   const onOpenDetailRef = useRef(onOpenDetail);
   onOpenDetailRef.current = onOpenDetail;
+  const merchantsRef = useRef(merchants);
+  merchantsRef.current = merchants;
 
   useEffect(() => {
     let isMounted = true;
@@ -73,7 +75,7 @@ export default function MapDisplay({
               event.preventDefault();
               event.stopPropagation();
               const id = btn.getAttribute('data-id');
-              const targetMerchant = merchants.find((item) => item.id === id);
+              const targetMerchant = merchantsRef.current.find((item) => item.id === id);
               if (targetMerchant && onOpenDetailRef.current) {
                 onOpenDetailRef.current(targetMerchant);
               }
@@ -213,8 +215,8 @@ export default function MapDisplay({
   }, [selectedId, merchants]);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height }}>
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm z-0 isolate" style={{ height }}>
+      <div ref={mapContainerRef} className="w-full h-full relative z-0" />
     </div>
   );
 }

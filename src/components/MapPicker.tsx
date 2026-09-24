@@ -201,9 +201,9 @@ export default function MapPicker({ latitude, longitude, onChange }: MapPickerPr
       </div>
 
       {/* Map Window */}
-      <div className="relative border-2 border-dashed border-slate-300 rounded-xl overflow-hidden shadow-inner bg-slate-100 h-72">
-        <div ref={mapContainerRef} className="w-full h-full" />
-        <div className="absolute top-2 right-2 z-[400] bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-700 border border-slate-200 shadow-sm pointer-events-none">
+      <div className="relative border-2 border-dashed border-slate-300 rounded-xl overflow-hidden shadow-inner bg-slate-100 h-72 z-0 isolate">
+        <div ref={mapContainerRef} className="w-full h-full relative z-0" />
+        <div className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-700 border border-slate-200 shadow-sm pointer-events-none">
           Klik peta atau geser pin hijau
         </div>
       </div>
